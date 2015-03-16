@@ -5,14 +5,20 @@ OUT = voxbox
 
 ALL_FILES = main.o shader_loader.o
 
-all: $(ALL_FILES)
-	$(CXX) $(CFLAGS) -o $(OUT) $(foreach file, $(ALL_FILES), $(file)) $(LINKERS)
+all: voxbox
+	@echo "VoxBox compiled"
+
+mktmp:
+	@mkdir -p tmp
+
+voxbox: mktmp $(foreach file, $(ALL_FILES), tmp/$(file))
+	$(CXX) $(CFLAGS) -o $(OUT) $(foreach file, $(ALL_FILES), tmp/$(file)) $(LINKERS)
 
 clean:
-	rm -f *.o
+	rm -rf tmp
 
-main.o: main.cpp
-	$(CXX) $(CFLAGS) -c -o main.o main.cpp
+tmp/main.o: src/main.cpp
+	$(CXX) $(CFLAGS) -c -o tmp/main.o src/main.cpp
 
-shader_loader.o: shader_loader.cpp shader_loader.h
-	$(CXX) $(CFLAGS) -c -o shader_loader.o shader_loader.cpp
+tmp/shader_loader.o: src/shader_loader.cpp src/shader_loader.h
+	$(CXX) $(CFLAGS) -c -o tmp/shader_loader.o src/shader_loader.cpp
