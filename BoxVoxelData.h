@@ -5,6 +5,9 @@
 
 using namespace glm;
 
+/*
+ * A very simple test voxel dataset. Just a monochrome box centered at the origin.
+ */
 class BoxVoxelData : public VoxelData {
  public:
  BoxVoxelData(float w, float h, float d, vec3 c) : w_(w), h_(h), d_(d), c_(c) { };
@@ -18,6 +21,6 @@ class BoxVoxelData : public VoxelData {
     }
   };
  private:
-  float w_, h_, d_;
-  vec3 c_;
+  float w_, h_, d_; // Dimensions
+  vec3 c_; // Color
 };

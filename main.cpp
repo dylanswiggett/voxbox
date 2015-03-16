@@ -4,9 +4,6 @@
 #include "SDL2/SDL.h"
 #include "GL/glew.h"
 
-#include "VoxelData.h"
-#include "BoxVoxelData.h"
-
 #define SDL_FLAGS SDL_INIT_EVERYTHING
 #define SDL_OGL_FLAGS SDL_WINDOW_OPENGL
 #define DEFAULT_WIDTH 1400
