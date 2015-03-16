@@ -1,13 +1,13 @@
 CXX = g++
 CFLAGS = -Wall -g -std=c++11
-LINKERS = -lSDL2 -lGL -lGLU
+LINKERS = -lSDL2 -lGL -lGLU -lGLEW
 OUT = voxbox
 
 all: main
-	$(CXX) $(CFLAGS) $(LINKERS) -o $(OUT) main.o
+	$(CXX) $(CFLAGS) -o $(OUT) main.o $(LINKERS)
 
 clean:
 	rm -f *.o
 
 main: main.cpp
-	$(CXX) -c $(CFLAGS) -o main.o main.cpp
+	$(CXX) $(CFLAGS) -c -o main.o main.cpp
