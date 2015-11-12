@@ -1,24 +1,17 @@
 CXX = g++
-CFLAGS = -Wall -g -std=c++11
-LINKERS = -lSDL2 -lGL -lGLU -lGLEW
-OUT = voxbox
+CFLAGS = -g -Wall -std=c++11
+EXEC = main
+SOURCES = $(wildcard src/*.cpp)
+OBJECTS = $(SOURCES:.cpp=.o)
+LINKERS = -lsfml-window -lsfml-graphics -lsfml-system -lGL -lGLU -lGLEW
 
-ALL_FILES = main.o shader_loader.o
+# Main target
+$(EXEC): $(OBJECTS)
+	$(CXX) $(CFLAGS) $(OBJECTS) -o $(EXEC) $(LINKERS)
 
-all: voxbox
-	@echo "VoxBox compiled"
+%.o: %.cpp
+	$(CXX) -c $(CFLAGS) $< -o $@ $(LINKERS)
 
-mktmp:
-	@mkdir -p tmp
-
-voxbox: mktmp $(foreach file, $(ALL_FILES), tmp/$(file))
-	$(CXX) $(CFLAGS) -o $(OUT) $(foreach file, $(ALL_FILES), tmp/$(file)) $(LINKERS)
-
+# To remove generated files
 clean:
-	rm -rf tmp
-
-tmp/main.o: src/main.cpp
-	$(CXX) $(CFLAGS) -c -o tmp/main.o src/main.cpp
-
-tmp/shader_loader.o: src/shader_loader.cpp src/shader_loader.h
-	$(CXX) $(CFLAGS) -c -o tmp/shader_loader.o src/shader_loader.cpp
+	rm -f $(EXEC) $(OBJECTS)

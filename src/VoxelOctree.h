@@ -6,7 +6,7 @@ typedef struct VoxelOctreeNode {
   VoxelOctreeNode *children[2][2][2];
   int w, h, d;
 
-  // w x h 2D array.
+  // w x h x d  3D array.
   // Should be populated only when in use (for memory savings).
   Voxel *values;
   
@@ -16,19 +16,22 @@ typedef struct VoxelOctreeNode {
 } VoxelOctreeNode;
 
 /*
- * Lazily converts a voxel dataset into an octree.
+ * Converts a voxel dataset into an octree.
  */
 class VoxelOctree {
  public:
-  VoxelOctree(VoxelData *source, double w, double h);
+  // Pass in the geometric bounds of the dataset, and the number of voxels it contains.
+  VoxelOctree(VoxelData *source, double w, double h, double d, int v_w, int v_h, int v_d);
   virtual ~VoxelOctree();
 
-  virtual void calculateTo(int depth);
+  virtual void cleanWith(bool (*function)(VoxelOctreeNode*));
+  virtual void generate();
   virtual VoxelOctreeNode *getRoot() const;
-  virtual void subdivideFrom(VoxelOctreeNode *node);
-  virtual void subdivideWith(bool (*function)(VoxelOctreeNode*));
  private:
+  void populateNode(VoxelOctreeNode *node);
+
   VoxelOctreeNode *root_;
   VoxelData *source_;
-  int w_, h_;
+  double w_, h_, d_;
+  int v_w_, v_h_, d_h_;
 };
