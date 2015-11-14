@@ -24,19 +24,35 @@ layout (std430, binding=2) buffer voxel_buf {
 ivec3 raymarch(vec3 pos, vec3 dir) {
   vec3 offset = pos - corner;
   vec3 voxelScale = (dim - corner) / nvoxels;
-  while (true) {
+  int maxtest = 1000; // Just to avoid infinite loops :)
+  while (maxtest > 0) {
+    maxtest -= 1;
     ivec3 curVoxel = ivec3(offset / voxelScale);
+    /*
+    if (curVoxel.x % 2 == 0)
+      return ivec3(-1, -1, -1);
+    else
+      return ivec3(0, 0, 0);
+    */
     if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x ||
 	curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
 	curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
       return ivec3(-1,-1,-1);
-    ivec4 vloc = ivec4(texture(voxels, vec3(curVoxel) / nvoxels) * 255);
-    int loc = vloc.a + 255 * (vloc.b + 255 * (vloc.g + 255 * vloc.r));
+    vec4 vloc = texelFetch(voxels, curVoxel, 0);
+    //ivec4 vloc = ivec4(texture(voxels, vec3(curVoxel) / nvoxels) * 255);
+    //ivec4 vloc = ivec4(texture(voxels, vec3(.8,.8,.8)) * 255);
+    if (vloc.r + vloc.g + vloc.b + vloc.a != 0)
+      return curVoxel;
+    /*
+    int loc = int(vloc.a + 255 * (vloc.b + 255 * (vloc.g + 255 * vloc.r)));
     if (loc != 0)
       return curVoxel;
+    */
 
     vec3 voxelOffset = offset - voxelScale * curVoxel;
+    offset += dir * .1;
   }
+  return ivec3(-1, -1, -1);
 }
 
 float intersection(vec3 pos, vec3 dir) {
@@ -85,6 +101,20 @@ void main() {
     return;
   }
 
-  camerapos += cameradir * t;
-  color = camerapos;
+  camerapos += cameradir * (t + .01);
+
+  ivec3 voxel = raymarch(camerapos, cameradir);
+  if (voxel.x < 0) {
+    color = vec3(.2, .2, .4);
+    return;
+  }
+
+  color = vec3(voxel) / nvoxels;
+  return;
+  
+  ivec4 vloc = ivec4(texture(voxels, vec3(voxel) / nvoxels) * 255);
+  int loc = vloc.a + 255 * (vloc.b + 255 * (vloc.g + 255 * vloc.r));
+  // TODO: Use loc.
+
+  color = vec3(1,1,1);
 }

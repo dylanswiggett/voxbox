@@ -58,8 +58,8 @@ int main(int argc, char** argv)
   window.setVerticalSyncEnabled(true);
   glewInit();
 
-  BoxVoxelData d(10, 10, 10, vec3());
-  VoxelShader *vs = new VoxelShader(&d, -10, -10, -10, 30, 30, 30, 100, 100, 100);
+  BoxVoxelData d(20, 10, 20, vec3());
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 10, 10, 10);
   
   running = true;
   // Main event/draw loop.

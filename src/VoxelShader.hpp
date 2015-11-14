@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <GL/glew.h>
 #include <GL/gl.h>
 
@@ -53,7 +54,7 @@ private:
   GLuint gl_voxel_tex_, gl_vdata_;
   GLuint vertex_buffer_, element_buffer_;
 
-  int *voxels_;
+  uint32_t *voxels_;
 public:
   VoxelShader(VoxelData* data,
 	      float x, float y, float z, // Corner of rendered region.

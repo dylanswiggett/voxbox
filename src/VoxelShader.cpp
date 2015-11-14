@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdint>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -35,6 +36,8 @@ VoxelShader::VoxelShader(VoxelData* data,
   data_(data), x_(x), y_(y), z_(z),
   w_(w), h_(h), d_(d), nx_(nx), ny_(ny), nz_(nz)
 {
+  glEnable(GL_TEXTURE_3D);
+  
   glGenVertexArrays(1, &vao_);
   glBindVertexArray(vao_);
   
@@ -53,7 +56,7 @@ VoxelShader::VoxelShader(VoxelData* data,
 		       FRAGMENT_SHADER_PATH);
 
   int size = nx * ny * nz;
-  voxels_ = new int[size];
+  voxels_ = new uint32_t[size];
 
   glGenTextures(1, &gl_voxel_tex_);
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
@@ -61,24 +64,33 @@ VoxelShader::VoxelShader(VoxelData* data,
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   Voxel v;
+  float xscale = w / nx;
+  float yscale = h / ny;
+  float zscale = d / nz;
   for (int xpos = 0; xpos < nx; xpos++) {
     for (int ypos = 0; ypos < ny; ypos++) {
       for (int zpos = 0; zpos < nz; zpos++) {
 	int pos = xpos * ny * nz + ypos * nz + zpos;
-	if (data_->voxelAt(vec3(xpos, ypos, zpos), &v)) {
-	  voxels_[pos] = 1;
+	if (data_->voxelAt(vec3(x + xscale * xpos,
+				y + yscale * ypos,
+				z + zscale * zpos), &v)) {
+	  voxels_[pos] = 1; // Big for testing...
 	} else {
 	  voxels_[pos] = 0;
 	}
       }
     }
   }
-  
-  glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8,
-	       w, h, d, 0, GL_RED,
-	       GL_UNSIGNED_INT, voxels_);
 
+  glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI,
+	       nx, ny, nz, 0, GL_RED_INTEGER,
+	       GL_UNSIGNED_INT, 0);
+  glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx, ny, nz, GL_RED_INTEGER,
+		  GL_UNSIGNED_INT, voxels_);
+
+  std::cout << "check..." << std::endl;
   check_GLerror();
+  std::cout << " done" << std::endl;
 
   // TODO: Everything w/ the SSBO
 };
@@ -109,8 +121,11 @@ void VoxelShader::draw(int w, int h)
   glUniform3f(loc, w_, h_, d_);
   loc = glGetUniformLocation(prog_, "nvoxels");
   glUniform3i(loc, nx_, ny_, nz_);
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
   loc = glGetUniformLocation(prog_, "voxels");
-  glUniform1i(loc, gl_voxel_tex_);
+  glUniform1i(loc, 0);
 
   check_GLerror();
   
