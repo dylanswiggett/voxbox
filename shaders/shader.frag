@@ -21,6 +21,24 @@ layout (std430, binding=2) buffer voxel_buf {
   voxel_data vdata[];
 };
 
+ivec3 raymarch(vec3 pos, vec3 dir) {
+  vec3 offset = pos - corner;
+  vec3 voxelScale = (dim - corner) / nvoxels;
+  while (true) {
+    ivec3 curVoxel = ivec3(offset / voxelScale);
+    if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x ||
+	curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
+	curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
+      return ivec3(-1,-1,-1);
+    ivec4 vloc = ivec4(texture(voxels, vec3(curVoxel) / nvoxels) * 255);
+    int loc = vloc.a + 255 * (vloc.b + 255 * (vloc.g + 255 * vloc.r));
+    if (loc != 0)
+      return curVoxel;
+
+    vec3 voxelOffset = offset - voxelScale * curVoxel;
+  }
+}
+
 float intersection(vec3 pos, vec3 dir) {
   float tmin = -100000, tmax = 100000;
 
