@@ -61,7 +61,7 @@ int main(int argc, char** argv)
   glewInit();
 
   BoxVoxelData d(vec3(10,10,0), vec3(5,10,5), vec3());
-  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 20, 20, 20);
   
   running = true;
   // Main event/draw loop.

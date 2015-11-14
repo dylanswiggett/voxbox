@@ -21,24 +21,35 @@ layout (std430, binding=2) buffer voxel_buf {
   voxel_data vdata[];
 };
 
+float rand(vec2 co){
+  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
 ivec3 raymarch(vec3 pos, vec3 dir) {
   vec3 offset = pos - corner;
   vec3 voxelScale = (dim - corner) / nvoxels;
   int maxtest = 1000; // Just to avoid infinite loops :)
   while (maxtest > 0) {
+    // TODO: Optimize these divisions!
     maxtest -= 1;
-    ivec3 curVoxel = ivec3(offset / voxelScale);
+    ivec3 curVoxel = ivec3(floor(offset / voxelScale));
+
+    // Are we in the box?
     if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x ||
 	curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
 	curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
       return ivec3(-1,-1,-1);
 
+    // Are we in a voxel?
     uint vloc = texture(voxels, vec3(curVoxel) / nvoxels).r;
     if (vloc != 0)
       return curVoxel;
 
+    // Find the next voxel!
     vec3 voxelOffset = offset - voxelScale * curVoxel;
-    offset += dir * .1;
+    vec3 tsteps = max(voxelOffset / dir, (voxelOffset - voxelScale) / dir);
+    float tstep = min(tsteps.x, min(tsteps.y, tsteps.z));
+    offset += dir * (tstep + .01);
   }
   return ivec3(-1, -1, -1);
 }
@@ -77,7 +88,7 @@ void main() {
     return;
   }
 
-  camerapos += cameradir * (t + .01);
+  camerapos += cameradir * (t + .1);
 
   ivec3 voxel = raymarch(camerapos, cameradir);
   if (voxel.x < 0) {
