@@ -28,26 +28,14 @@ ivec3 raymarch(vec3 pos, vec3 dir) {
   while (maxtest > 0) {
     maxtest -= 1;
     ivec3 curVoxel = ivec3(offset / voxelScale);
-    /*
-    if (curVoxel.x % 2 == 0)
-      return ivec3(-1, -1, -1);
-    else
-      return ivec3(0, 0, 0);
-    */
     if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x ||
 	curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
 	curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
       return ivec3(-1,-1,-1);
-    //vec4 vloc = texelFetch(voxels, curVoxel / , 0);
+
     uint vloc = texture(voxels, vec3(curVoxel) / nvoxels).r;
-    //ivec4 vloc = ivec4(texture(voxels, vec3(.8,.8,.8)) * 255);
     if (vloc != 0)
       return curVoxel;
-    /*
-    int loc = int(vloc.a + 255 * (vloc.b + 255 * (vloc.g + 255 * vloc.r)));
-    if (loc != 0)
-      return curVoxel;
-    */
 
     vec3 voxelOffset = offset - voxelScale * curVoxel;
     offset += dir * .1;
