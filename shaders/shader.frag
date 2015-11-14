@@ -44,26 +44,14 @@ ivec3 raymarch(vec3 pos, vec3 dir) {
 }
 
 float intersection(vec3 pos, vec3 dir) {
-  float tmin = -100000, tmax = 100000;
-
-  float tx1 = (c1.x - pos.x)/dir.x;
-  float tx2 = (c2.x - pos.x)/dir.x;
-
-  tmin = max(tmin, min(tx1, tx2));
-  tmax = min(tmax, max(tx1, tx2));
-
-  float ty1 = (c1.y - pos.y)/dir.y;
-  float ty2 = (c2.y - pos.y)/dir.y;
-
-  tmin = max(tmin, min(ty1, ty2));
-  tmax = min(tmax, max(ty1, ty2));
-
-  float tz1 = (c1.z - pos.z)/dir.z;
-  float tz2 = (c2.z - pos.z)/dir.z;
-
-  tmin = max(tmin, min(tz1, tz2));
-  tmax = min(tmax, max(tz1, tz2));
-
+  // TODO: Since the view is isometric,
+  //       this can be much more efficient!
+  vec3 t1 = (c1 - pos) / dir;
+  vec3 t2 = (c2 - pos) / dir;
+  vec3 tmins = min(t1, t2);
+  vec3 tmaxs = max(t1, t2);
+  float tmin = max(tmins.x, max(tmins.y, tmins.z));
+  float tmax = min(tmaxs.x, min(tmaxs.y, tmaxs.z));
   if (tmax >= tmin) {
     return tmin;
   } else {
