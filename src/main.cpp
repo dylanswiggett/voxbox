@@ -1,9 +1,18 @@
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <iostream>
 
 #include <glm/glm.hpp>
 #include "GL/glew.h"
 #include <SFML/Window.hpp>
 #include <SFML/OpenGL.hpp>
+
+#include "VoxelShader.hpp"
+#include "BoxVoxelData.h"
+#include "VoxelData.h"
 
 #define DEFAULT_WIDTH 1400
 #define DEFAULT_HEIGHT 800
@@ -13,8 +22,24 @@
 using namespace std;
 using namespace glm;
 
+
+void handler(int sig) {
+  void *array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
+
 int main(int argc, char** argv)
 {
+  signal(SIGSEGV, handler);
+  
   bool running;
   sf::Event event;
 
@@ -30,6 +55,11 @@ int main(int argc, char** argv)
 
   // TODO: Initial setup here
   window.setFramerateLimit(60);
+  window.setVerticalSyncEnabled(true);
+  glewInit();
+
+  BoxVoxelData d(10, 10, 10, vec3());
+  VoxelShader *vs = new VoxelShader(&d, -10, -10, -10, 30, 30, 30, 100, 100, 100);
   
   running = true;
   // Main event/draw loop.
@@ -45,8 +75,11 @@ int main(int argc, char** argv)
     }
 
     // TODO: Run routine draw here.
+    sf::Vector2u wsize = window.getSize();
+    vs->draw(wsize.x, wsize.y);
 
     window.display();
   }
 
+  delete vs;
 }
