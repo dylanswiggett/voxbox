@@ -56,12 +56,12 @@ VoxelShader::VoxelShader(VoxelData* data,
 		       FRAGMENT_SHADER_PATH);
 
   int size = nx * ny * nz;
-  voxels_ = new uint32_t[size];
+  voxels_ = new GLuint[size];
 
   glGenTextures(1, &gl_voxel_tex_);
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
   Voxel v;
   float xscale = w / nx;

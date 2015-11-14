@@ -10,11 +10,11 @@ using namespace glm;
  */
 class BoxVoxelData : public VoxelData {
  public:
- BoxVoxelData(float w, float h, float d, vec3 c) : w_(w), h_(h), d_(d), c_(c) { };
+ BoxVoxelData(vec3 corner, vec3 dim , vec3 c) : c1_(corner), c2_(corner + dim), c_(c) { };
   virtual bool voxelAt(vec3 position, Voxel* v) {
-    if ( position.x <= w_ && position.x >= -w_ &&
-	 position.y <= h_ && position.y >= -h_ &&
-	 position.z <= d_ && position.z >= -d_ ) {
+    if ( position.x < c2_.x && position.x >= c1_.x &&
+	 position.y < c2_.y && position.y >= c1_.y &&
+	 position.z < c2_.z && position.z >= c1_.z ) {
       v->color = c_;
       return true;
     } else {
@@ -22,6 +22,6 @@ class BoxVoxelData : public VoxelData {
     }
   };
  private:
-  float w_, h_, d_; // Dimensions
+  vec3 c1_, c2_; // Dimensions
   vec3 c_; // Color
 };

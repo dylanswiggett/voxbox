@@ -14,7 +14,7 @@
 #include "BoxVoxelData.h"
 #include "VoxelData.h"
 
-#define DEFAULT_WIDTH 1400
+#define DEFAULT_WIDTH 800
 #define DEFAULT_HEIGHT 800
 #define OPENGL_MAJOR_VERSION 4
 #define OPENGL_MINOR_VERSION 3
@@ -56,10 +56,12 @@ int main(int argc, char** argv)
   // TODO: Initial setup here
   window.setFramerateLimit(60);
   window.setVerticalSyncEnabled(true);
+  window.setPosition(sf::Vector2i((sf::VideoMode::getDesktopMode().width/2)-DEFAULT_WIDTH/2,
+				  (sf::VideoMode::getDesktopMode().height/2)-DEFAULT_HEIGHT/2));
   glewInit();
 
-  BoxVoxelData d(20, 10, 20, vec3());
-  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 10, 10, 10);
+  BoxVoxelData d(vec3(10,10,0), vec3(5,10,5), vec3());
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
   
   running = true;
   // Main event/draw loop.

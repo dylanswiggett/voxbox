@@ -8,7 +8,7 @@ struct voxel_data {
   uint metadata; // (numrays neighbors flags flags)
 };
 
-uniform sampler3D voxels;
+uniform usampler3D voxels;
 
 uniform ivec2 wsize;
 
@@ -38,10 +38,10 @@ ivec3 raymarch(vec3 pos, vec3 dir) {
 	curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
 	curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
       return ivec3(-1,-1,-1);
-    vec4 vloc = texelFetch(voxels, curVoxel, 0);
-    //ivec4 vloc = ivec4(texture(voxels, vec3(curVoxel) / nvoxels) * 255);
+    //vec4 vloc = texelFetch(voxels, curVoxel / , 0);
+    uint vloc = texture(voxels, vec3(curVoxel) / nvoxels).r;
     //ivec4 vloc = ivec4(texture(voxels, vec3(.8,.8,.8)) * 255);
-    if (vloc.r + vloc.g + vloc.b + vloc.a != 0)
+    if (vloc != 0)
       return curVoxel;
     /*
     int loc = int(vloc.a + 255 * (vloc.b + 255 * (vloc.g + 255 * vloc.r)));
