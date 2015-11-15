@@ -26,30 +26,56 @@ float rand(vec2 co){
 }
 
 ivec3 raymarch(vec3 pos, vec3 dir) {
-  vec3 offset = pos - corner;
   vec3 voxelScale = (dim - corner) / nvoxels;
-  int maxtest = 1000; // Just to avoid infinite loops :)
+  ivec3 steps = ivec3(sign(dir));
+
+  // TODO: Can maxs be found more efficiently?
+  vec3 offset = pos - corner;
+  ivec3 curVoxel = ivec3(floor(offset / voxelScale));
+  if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x ||
+      curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
+      curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
+    return ivec3(-1, -1, -1); // Edge case (hurr durr)
+  vec3 curVoxelOffset = offset - voxelScale * curVoxel;
+  vec3 maxs = max(curVoxelOffset / dir, (curVoxelOffset - voxelScale) / dir);
+  
+  vec3 deltas = abs(voxelScale / dir);
+  
+  int maxtest = 10; // Just to avoid infinite loops :)
   while (maxtest > 0) {
     // TODO: Optimize these divisions!
     maxtest -= 1;
-    ivec3 curVoxel = ivec3(floor(offset / voxelScale));
-
-    // Are we in the box?
-    if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x ||
-	curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
-	curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
-      return ivec3(-1,-1,-1);
 
     // Are we in a voxel?
     uint vloc = texture(voxels, vec3(curVoxel) / nvoxels).r;
     if (vloc != 0)
       return curVoxel;
 
-    // Find the next voxel!
-    vec3 voxelOffset = offset - voxelScale * curVoxel;
-    vec3 tsteps = max(voxelOffset / dir, (voxelOffset - voxelScale) / dir);
-    float tstep = min(tsteps.x, min(tsteps.y, tsteps.z));
-    offset += dir * (tstep + .01);
+    if (maxs.x < maxs.y) {
+      if (maxs.x < maxs.z) {
+	curVoxel.x += steps.x;
+	if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x)
+	  break;
+	maxs.x += deltas.x;
+      } else {
+	curVoxel.z += steps.z;
+	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
+	  break;
+	maxs.z += deltas.z;
+      }
+    } else {
+      if (maxs.y < maxs.z) {
+	curVoxel.y += steps.y;
+	if (curVoxel.y < 0 || curVoxel.y >= nvoxels.y)
+	  break;
+	maxs.y += deltas.y;
+      } else {
+	curVoxel.z += steps.z;
+	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
+	  break;
+	maxs.z += deltas.z;
+      }
+    }
   }
   return ivec3(-1, -1, -1);
 }

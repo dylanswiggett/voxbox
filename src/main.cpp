@@ -60,8 +60,8 @@ int main(int argc, char** argv)
 				  (sf::VideoMode::getDesktopMode().height/2)-DEFAULT_HEIGHT/2));
   glewInit();
 
-  BoxVoxelData d(vec3(10,10,0), vec3(5,10,5), vec3());
-  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 20, 20, 20);
+  BoxVoxelData d(vec3(5,0,0), vec3(15,20,10), vec3());
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 5, 5, 5);
   
   running = true;
   // Main event/draw loop.
