@@ -37,11 +37,11 @@ ivec3 raymarch(vec3 pos, vec3 dir) {
       curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
     return ivec3(-1, -1, -1); // Edge case (hurr durr)
   vec3 curVoxelOffset = offset - voxelScale * curVoxel;
-  vec3 maxs = max(curVoxelOffset / dir, (curVoxelOffset - voxelScale) / dir);
+  vec3 maxs = max(curVoxelOffset * steps, (curVoxelOffset - voxelScale) * steps) / dir;
   
   vec3 deltas = abs(voxelScale / dir);
   
-  int maxtest = 10; // Just to avoid infinite loops :)
+  int maxtest = 1000; // Just to avoid infinite loops :)
   while (maxtest > 0) {
     // TODO: Optimize these divisions!
     maxtest -= 1;
