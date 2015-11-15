@@ -24,7 +24,7 @@ uniform ivec3 nvoxels;
 
 vec3 c1, c2;
 
-layout (std430, binding=2) buffer voxel_buf {
+layout (std430, binding=1) buffer voxel_buf {
   voxel_data vdata[];
 };
 
@@ -129,7 +129,8 @@ void main() {
     return;
   }
 
-  uint vloc = texture(voxels, vec3(voxel) / nvoxels).r;
+  uint vloc = texture(voxels, vec3(voxel) / nvoxels).r - 1;
+  atomicAdd(vdata[vloc].color, 1);// += 1;
   voxel_data vdata = vdata[vloc];
 
   color = vd_color(vdata);

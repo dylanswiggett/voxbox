@@ -138,7 +138,7 @@ void VoxelShader::draw(int w, int h)
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
   loc = glGetUniformLocation(prog_, "voxels");
   glUniform1i(loc, 0);
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, gl_vdata_);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, gl_vdata_);
 
   check_GLerror();
   
