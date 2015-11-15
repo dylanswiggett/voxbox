@@ -11,6 +11,7 @@
 #include <SFML/OpenGL.hpp>
 
 #include "VoxelShader.hpp"
+#include "CombineVoxelData.h"
 #include "BoxVoxelData.h"
 #include "VoxelData.h"
 
@@ -60,8 +61,10 @@ int main(int argc, char** argv)
 				  (sf::VideoMode::getDesktopMode().height/2)-DEFAULT_HEIGHT/2));
   glewInit();
 
-  BoxVoxelData d(vec3(5,0,0), vec3(15,20,10), vec3());
-  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 5, 5, 5);
+  CombineVoxelData d;
+  d.addVoxels(new BoxVoxelData(vec3(5,0,0), vec3(15,20,10), vec3()));
+  d.addVoxels(new BoxVoxelData(vec3(0,0,5), vec3(10,20,15), vec3()));
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 50, 50, 50);
   
   running = true;
   // Main event/draw loop.
