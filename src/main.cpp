@@ -63,10 +63,10 @@ int main(int argc, char** argv)
   glewInit();
 
   CombineVoxelData d;
-  d.addVoxels(new BoxVoxelData(vec3(5,0,0), vec3(15,20,10), vec3(.6,.2,0)));
-  d.addVoxels(new BoxVoxelData(vec3(0,0,5), vec3(10,20,15), vec3(0,.7,0)));
-  d.addVoxels(new BoxVoxelData(vec3(0,5,0), vec3(18,5,18), vec3(0,1,.3)));
-  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
+  d.addVoxels(new BoxVoxelData(vec3(5,1,1), vec3(13,18,8), vec3(.6,.2,0)));
+  d.addVoxels(new BoxVoxelData(vec3(1,1,5), vec3(8,18,13), vec3(.6,.2,0)));
+  d.addVoxels(new BoxVoxelData(vec3(1,5,1), vec3(18,5,18), vec3(0,1,.3)));
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 50, 50, 50);
   
   running = true;
   // Main event/draw loop.

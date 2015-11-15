@@ -82,7 +82,11 @@ VoxelShader::VoxelShader(VoxelData* data,
     }
   }
 
-  std::cout << sizeof(struct voxel_data) << std::endl;
+  std::cout << vdata_.size() << " voxels." << std::endl;
+  std::cout << "Each voxel uses " << sizeof(struct voxel_data) << " bytes." << std::endl;
+  std::cout << "Max voxels in box: " << nx * ny * nz << std::endl;
+  std::cout << "Total mem: " << sizeof(struct voxel_data) * vdata_.size()
+    + nx * ny * nz * 4 << " bytes." << std::endl;
 
   glGenTextures(1, &gl_voxel_tex_);
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);

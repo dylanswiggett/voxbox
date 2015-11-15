@@ -32,7 +32,7 @@ float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-ivec3 raymarch(vec3 pos, vec3 dir) {
+ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
   vec3 voxelScale = (dim - corner) / nvoxels;
   ivec3 steps = ivec3(sign(dir));
 
@@ -54,18 +54,22 @@ ivec3 raymarch(vec3 pos, vec3 dir) {
     maxtest -= 1;
 
     // Are we in a voxel?
-    uint vloc = texture(voxels, vec3(curVoxel) / nvoxels).r;
-    if (vloc != 0)
+    vloc = texture(voxels, vec3(curVoxel) / nvoxels).r;
+    if (vloc != 0) {
+      vloc -= 1;
       return curVoxel;
+    }
 
     if (maxs.x < maxs.y) {
       if (maxs.x < maxs.z) {
 	curVoxel.x += steps.x;
+	laststep = ivec3(steps.x, 0, 0);
 	if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x)
 	  break;
 	maxs.x += deltas.x;
       } else {
 	curVoxel.z += steps.z;
+  	laststep = ivec3(0, 0, steps.z);
 	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
 	  break;
 	maxs.z += deltas.z;
@@ -73,11 +77,13 @@ ivec3 raymarch(vec3 pos, vec3 dir) {
     } else {
       if (maxs.y < maxs.z) {
 	curVoxel.y += steps.y;
+	laststep = ivec3(0, steps.y, 0);
 	if (curVoxel.y < 0 || curVoxel.y >= nvoxels.y)
 	  break;
 	maxs.y += deltas.y;
       } else {
 	curVoxel.z += steps.z;
+	laststep = ivec3(0, 0, steps.z);
 	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
 	  break;
 	maxs.z += deltas.z;
@@ -123,16 +129,17 @@ void main() {
 
   camerapos += cameradir * (t + .1);
 
-  ivec3 voxel = raymarch(camerapos, cameradir);
+  uint vloc;
+  ivec3 laststep;
+  ivec3 voxel = raymarch(camerapos, cameradir, vloc, laststep);
   if (voxel.x < 0) {
     color = vec3(.2, .2, .4);
     return;
   }
 
-  uint vloc = texture(voxels, vec3(voxel) / nvoxels).r - 1;
   atomicAdd(vdata[vloc].color, 1);// += 1;
   voxel_data vdata = vdata[vloc];
 
-  color = vd_color(vdata);
+  color = vec3(vd_color(vdata)) * abs(dot(vec3(1, .5, .3), vec3(laststep)));
   return;
 }
