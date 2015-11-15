@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <vector>
 #include <GL/glew.h>
 #include <GL/gl.h>
 
@@ -6,6 +7,8 @@
 
 #define VERTEX_SHADER_PATH   "shaders/shader.vert"
 #define FRAGMENT_SHADER_PATH "shaders/shader.frag"
+
+using namespace std;
 
 /*
 A single node inside the voxel tree should contain:
@@ -55,6 +58,7 @@ private:
   GLuint vertex_buffer_, element_buffer_;
 
   GLuint *voxels_;
+  vector<struct voxel_data> vdata_;
 public:
   VoxelShader(VoxelData* data,
 	      float x, float y, float z, // Corner of rendered region.

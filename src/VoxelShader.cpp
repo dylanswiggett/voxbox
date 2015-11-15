@@ -57,13 +57,8 @@ VoxelShader::VoxelShader(VoxelData* data,
 
   int size = nx * ny * nz;
   voxels_ = new GLuint[size];
-
-  glGenTextures(1, &gl_voxel_tex_);
-  glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
   Voxel v;
+  struct voxel_data vd;
   float xscale = w / nx;
   float yscale = h / ny;
   float zscale = d / nz;
@@ -74,7 +69,12 @@ VoxelShader::VoxelShader(VoxelData* data,
 	if (data_->voxelAt(vec3(x + xscale * xpos,
 				y + yscale * ypos,
 				z + zscale * zpos), &v)) {
-	  voxels_[pos] = 1; // Big for testing...
+	  vd.r = 255 * v.color.r;
+	  vd.g = 255 * v.color.g;
+	  vd.b = 255 * v.color.b;
+	  vd.emittance = 0;
+	  vdata_.push_back(vd);
+	  voxels_[pos] = vdata_.size();
 	} else {
 	  voxels_[pos] = 0;
 	}
@@ -82,11 +82,23 @@ VoxelShader::VoxelShader(VoxelData* data,
     }
   }
 
+  std::cout << sizeof(struct voxel_data) << std::endl;
+
+  glGenTextures(1, &gl_voxel_tex_);
+  glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI,
 	       nx, ny, nz, 0, GL_RED_INTEGER,
 	       GL_UNSIGNED_INT, 0);
   glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx, ny, nz, GL_RED_INTEGER,
 		  GL_UNSIGNED_INT, voxels_);
+
+  glGenBuffers(1, &gl_vdata_);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, gl_vdata_);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, vdata_.size() * sizeof(struct voxel_data),
+	       &vdata_[0], GL_DYNAMIC_COPY);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
   std::cout << "check..." << std::endl;
   check_GLerror();
@@ -126,6 +138,7 @@ void VoxelShader::draw(int w, int h)
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
   loc = glGetUniformLocation(prog_, "voxels");
   glUniform1i(loc, 0);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, gl_vdata_);
 
   check_GLerror();
   

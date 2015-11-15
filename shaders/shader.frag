@@ -8,6 +8,13 @@ struct voxel_data {
   uint metadata; // (numrays neighbors flags flags)
 };
 
+vec3 vd_color(struct voxel_data vd) {
+  uint b = (vd.color >> 16) & 0xFF;
+  uint g = (vd.color >> 8) & 0xFF;
+  uint r = (vd.color >> 0) & 0xFF;
+  return vec3(ivec3(r,g,b)) / 255;
+}
+
 uniform usampler3D voxels;
 
 uniform ivec2 wsize;
@@ -122,12 +129,9 @@ void main() {
     return;
   }
 
-  color = vec3(voxel) / nvoxels;
-  return;
-  
-  ivec4 vloc = ivec4(texture(voxels, vec3(voxel) / nvoxels) * 255);
-  int loc = vloc.a + 255 * (vloc.b + 255 * (vloc.g + 255 * vloc.r));
-  // TODO: Use loc.
+  uint vloc = texture(voxels, vec3(voxel) / nvoxels).r;
+  voxel_data vdata = vdata[vloc];
 
-  color = vec3(1,1,1);
+  color = vd_color(vdata);
+  return;
 }
