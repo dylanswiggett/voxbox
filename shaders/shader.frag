@@ -151,24 +151,20 @@ void main() {
     return;
   }
 
-  //atomicAdd(vdata[vloc].color, 1);// += 1;
-  voxel_data vdata = vdata[vloc];
-
   ivec3 lightpos = voxel - laststep;
   vec3 norm = -vec3(laststep);
   vec3 side = vec3(norm.y, norm.z, norm.x);
-  //vec3 lightdir = vec3(cos(float(time) / 100), 1 + 1.3 * sin(float(time) / 273), -sin(float(time) / 230));
-  vec3 lightdir = hem_rand(norm, side, vec3(voxel));
-  lightdir = normalize(lightdir);
-  //lightdir = normalize(lightdir);
+  vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel)));
   vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + vec3(.5,.5,.5));
+
   ivec3 nextlaststep;
-  voxel = raymarch(lightposabs, lightdir, vloc, nextlaststep);
-  if (voxel.x > 0) {
-    color = vec3(0, 0, 0);
-    return;
+  uint nextvloc;
+  voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
+  atomicAdd(vdata[vloc].metadata, 1);
+  if (voxel.x < 0) {
+    atomicAdd(vdata[vloc].lighting, 1);
   }
 
-  color = vec3(vd_color(vdata)) * dot(lightdir, vec3(-laststep));
+  color = vec3(vd_color(vdata[vloc])) * (float(vdata[vloc].lighting) / float(vdata[vloc].metadata));
   return;
 }
