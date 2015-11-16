@@ -34,6 +34,15 @@ float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
+vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
+  float u1 = rand(vec2(rand(vec2(seed.x, seed.y)), rand(vec2(seed.z, time))));
+  float u2 = rand(vec2(u1, time));
+  float r = sqrt(1.0 - u1 * u1);
+  float phi = 2 * 3.14159 * u2;
+  vec3 side2 = cross(norm, side);
+  return u1 * norm + cos(phi) * r * side + sin(phi) * r * side2;
+}
+
 ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
   vec3 voxelScale = (dim - corner) / nvoxels;
   ivec3 steps = ivec3(sign(dir));
@@ -122,6 +131,9 @@ void main() {
   vec3 up = cross(right, cameradir);
   // TODO: Figure out why 25 is a good parameter here...
   vec3 camerapos = corner + dim + (right * pos.x + up * pos.y) * 25;
+  
+  // This line enables (crazy) perspective:
+  // cameradir = normalize(-dim + 20 * sin(float(time) / 10) * (right * pos.x + up * pos.y));
 
   float t = intersection(camerapos, cameradir);
   if (t == 0) {
@@ -143,8 +155,12 @@ void main() {
   voxel_data vdata = vdata[vloc];
 
   ivec3 lightpos = voxel - laststep;
-  vec3 lightdir = vec3(cos(float(time) / 100), 1 + 1.3 * sin(float(time) / 273), -sin(float(time) / 230));
+  vec3 norm = -vec3(laststep);
+  vec3 side = vec3(norm.y, norm.z, norm.x);
+  //vec3 lightdir = vec3(cos(float(time) / 100), 1 + 1.3 * sin(float(time) / 273), -sin(float(time) / 230));
+  vec3 lightdir = hem_rand(norm, side, vec3(voxel));
   lightdir = normalize(lightdir);
+  //lightdir = normalize(lightdir);
   vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + vec3(.5,.5,.5));
   ivec3 nextlaststep;
   voxel = raymarch(lightposabs, lightdir, vloc, nextlaststep);
