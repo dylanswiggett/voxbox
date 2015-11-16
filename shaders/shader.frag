@@ -22,6 +22,8 @@ uniform ivec2 wsize;
 uniform vec3 corner, dim;
 uniform ivec3 nvoxels;
 
+uniform int time;
+
 vec3 c1, c2;
 
 layout (std430, binding=1) buffer voxel_buf {
@@ -137,9 +139,20 @@ void main() {
     return;
   }
 
-  atomicAdd(vdata[vloc].color, 1);// += 1;
+  //atomicAdd(vdata[vloc].color, 1);// += 1;
   voxel_data vdata = vdata[vloc];
 
-  color = vec3(vd_color(vdata)) * abs(dot(vec3(1, .5, .3), vec3(laststep)));
+  ivec3 lightpos = voxel - laststep;
+  vec3 lightdir = vec3(cos(float(time) / 100), 1 + 1.3 * sin(float(time) / 273), -sin(float(time) / 230));
+  lightdir = normalize(lightdir);
+  vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + vec3(.5,.5,.5));
+  ivec3 nextlaststep;
+  voxel = raymarch(lightposabs, lightdir, vloc, nextlaststep);
+  if (voxel.x > 0) {
+    color = vec3(0, 0, 0);
+    return;
+  }
+
+  color = vec3(vd_color(vdata)) * dot(lightdir, vec3(-laststep));
   return;
 }

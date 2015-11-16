@@ -104,11 +104,9 @@ VoxelShader::VoxelShader(VoxelData* data,
 	       &vdata_[0], GL_DYNAMIC_COPY);
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-  std::cout << "check..." << std::endl;
   check_GLerror();
-  std::cout << " done" << std::endl;
 
-  // TODO: Everything w/ the SSBO
+  t = 0;
 };
 
 VoxelShader::~VoxelShader()
@@ -137,6 +135,9 @@ void VoxelShader::draw(int w, int h)
   glUniform3f(loc, w_, h_, d_);
   loc = glGetUniformLocation(prog_, "nvoxels");
   glUniform3i(loc, nx_, ny_, nz_);
+
+  loc = glGetUniformLocation(prog_, "time");
+  glUniform1i(loc, t++);
 
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);

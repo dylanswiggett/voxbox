@@ -59,6 +59,8 @@ private:
 
   GLuint *voxels_;
   vector<struct voxel_data> vdata_;
+
+  int t;
 public:
   VoxelShader(VoxelData* data,
 	      float x, float y, float z, // Corner of rendered region.
