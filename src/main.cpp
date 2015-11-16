@@ -68,8 +68,8 @@ int main(int argc, char** argv)
   d.addVoxels(new BoxVoxelData(vec3(11,15,10), vec3(2,3,1), vec3(.2,.2,.4)));
   d.addVoxels(new BoxVoxelData(vec3(1,5,1), vec3(18,5,18), vec3(0,1,.3)));
   d.addVoxels(new BoxVoxelData(vec3(10,10,13), vec3(3,5,3), vec3(0,1,.3)));
-  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 50, 50, 50);
-  //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
+  //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 50, 50, 50);
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
   
   running = true;
   // Main event/draw loop.

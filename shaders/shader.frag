@@ -134,6 +134,7 @@ void main() {
   
   // This line enables (crazy) perspective:
   // cameradir = normalize(-dim + 20 * sin(float(time) / 10) * (right * pos.x + up * pos.y));
+  // cameradir = normalize(-dim + 20 * (right * pos.x + up * pos.y));
 
   float t = intersection(camerapos, cameradir);
   if (t == 0) {
@@ -160,9 +161,10 @@ void main() {
   ivec3 nextlaststep;
   uint nextvloc;
   voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
-  atomicAdd(vdata[vloc].metadata, 1);
-  if (voxel.x < 0) {
-    atomicAdd(vdata[vloc].lighting, 1);
+  atomicAdd(vdata[vloc].metadata, 10);
+  vec3 ldir = vec3(1,.5,-.2);
+  if (voxel.x < 0 && dot(lightdir, ldir) > 0) {
+    atomicAdd(vdata[vloc].lighting, int(10 * dot(lightdir, ldir)));
   }
 
   color = vec3(vd_color(vdata[vloc])) * (float(vdata[vloc].lighting) / float(vdata[vloc].metadata));
