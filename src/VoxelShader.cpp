@@ -76,6 +76,7 @@ VoxelShader::VoxelShader(VoxelData* data,
 	  vd.illum_r = vd.illum_g = vd.illum_b = 0;
 	  vd.diffuse = vd.numrays = vd.neighbors = 0;
 	  vd.flags = 0;
+	  vd.lock = 0;
 	  vdata_.push_back(vd);
 	  voxels_[pos] = vdata_.size();
 	} else {

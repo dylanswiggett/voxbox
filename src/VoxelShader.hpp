@@ -29,20 +29,22 @@ Seperate 3D tex for raymarching.
  */
 
 struct voxel_data {
-  int r : 8;
-  int g : 8;
-  int b : 8;
-  int emittance : 8;
+  uint r : 8;
+  uint g : 8;
+  uint b : 8;
+  uint emittance : 8;
 
-  int illum_r : 8;
-  int illum_g : 8;
-  int illum_b : 8;
+  uint illum_r : 16;
+  uint illum_g : 16;
+  uint illum_b : 16;
+
+  uint numrays : 16;
+  uint diffuse : 8;
+  uint neighbors : 8;
   
-  int diffuse : 8;
-  int numrays : 8;
-  int neighbors : 8;
-  
-  int flags : 16;
+  uint flags : 16;
+
+  uint lock : 32;
 };
 
 class VoxelShader

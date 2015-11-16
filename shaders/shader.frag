@@ -1,19 +1,44 @@
 #version 430 core
+#extension GL_NV_gpu_shader5 : require
 
 layout(location = 0) out vec3 color;
 
 struct voxel_data {
-  uint color; // (r g b emittance)
-  uint lighting; // (r g b diffuse)
-  uint metadata; // (numrays neighbors flags flags)
+  uint8_t r, g, b;
+  uint8_t emission;
+  uint16_t illum_r, illum_g, illum_b;
+  uint16_t numrays;
+  uint8_t diffuse;
+  uint8_t neighbors;
+  uint16_t flags;
+  uint lock;
+};
+
+layout (std430, binding=1) buffer voxel_buf {
+  voxel_data vdata[];
 };
 
 vec3 vd_color(struct voxel_data vd) {
-  uint b = (vd.color >> 16) & 0xFF;
-  uint g = (vd.color >> 8) & 0xFF;
-  uint r = (vd.color >> 0) & 0xFF;
-  return vec3(ivec3(r,g,b)) / 255;
+  return vec3(ivec3(vd.r,vd.g,vd.b)) / 255;
 }
+
+// These don't work :(
+/*
+bool lock_voxel(uint vloc) {
+  int maxtries = 1000;
+  while (maxtries > 0) {
+    maxtries--;
+    if (atomicExchange(vdata[vloc].lock, 1) == 0)
+      return true;
+  }
+  return false;
+}
+
+void unlock_voxel(uint vloc) {
+  memoryBarrier();
+  atomicExchange(vdata[vloc].lock, 0);
+}
+*/
 
 uniform usampler3D voxels;
 
@@ -25,10 +50,6 @@ uniform ivec3 nvoxels;
 uniform int time;
 
 vec3 c1, c2;
-
-layout (std430, binding=1) buffer voxel_buf {
-  voxel_data vdata[];
-};
 
 float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
@@ -133,8 +154,8 @@ void main() {
   vec3 camerapos = corner + dim + (right * pos.x + up * pos.y) * 25;
   
   // This line enables (crazy) perspective:
-  // cameradir = normalize(-dim + 20 * sin(float(time) / 10) * (right * pos.x + up * pos.y));
-  // cameradir = normalize(-dim + 20 * (right * pos.x + up * pos.y));
+  //cameradir = normalize(-dim + 20 * sin(float(time) / 10) * (right * pos.x + up * pos.y));
+  //cameradir = normalize(-dim + 20 * (right * pos.x + up * pos.y));
 
   float t = intersection(camerapos, cameradir);
   if (t == 0) {
@@ -161,12 +182,48 @@ void main() {
   ivec3 nextlaststep;
   uint nextvloc;
   voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
+
+  float lighting = 0;
+  vec3 ldir = vec3(1, .5, 1);
+  if (voxel.x < 0 && dot(lightdir, ldir) > 0) {
+    lighting = dot(lightdir, ldir);
+  }
+
+  float actuallight = 0;
+
+  // Lock vdata for our voxel.
+  bool done = false;
+  uint locked = 0;
+  while (!done) {
+    locked = atomicExchange(vdata[vloc].lock, 1);
+    if (locked == 0) {
+      // Begin locked region.
+
+      if (vdata[vloc].numrays >= uint16_t(5000)) {
+	vdata[vloc].numrays -= uint16_t(2000);
+	vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * 3.0 / 5.0);
+      } else {
+	vdata[vloc].numrays++;
+	vdata[vloc].illum_r += uint16_t(lighting);
+      }
+
+      actuallight = float(vdata[vloc].illum_r) / float(vdata[vloc].numrays);
+
+      // End locked region.
+      memoryBarrier();
+      atomicExchange(vdata[vloc].lock, 0);
+      done = true;
+    }
+  }
+
+  /*
   atomicAdd(vdata[vloc].metadata, 10);
   vec3 ldir = vec3(1,.5,-.2);
   if (voxel.x < 0 && dot(lightdir, ldir) > 0) {
     atomicAdd(vdata[vloc].lighting, int(10 * dot(lightdir, ldir)));
   }
+  */
 
-  color = vec3(vd_color(vdata[vloc])) * (float(vdata[vloc].lighting) / float(vdata[vloc].metadata));
+  color = vec3(vd_color(vdata[vloc])) * actuallight;
   return;
 }
