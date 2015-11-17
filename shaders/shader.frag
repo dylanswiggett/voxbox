@@ -179,7 +179,6 @@ void main() {
     return;
   }
 
-  if (rand(vec2(rand(vec2(pos.x, pos.y)), t)) > .7) {
   ivec3 lightpos = voxel - laststep;
   vec3 norm = -vec3(laststep);
   vec3 side = vec3(norm.y, norm.z, norm.x);
@@ -198,11 +197,13 @@ void main() {
   float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
 
   vec3 lighting = hit_color * hit_emit + hit_illum * hit_color * hit_diffuse;
+  //vec3 lighting = vec3(1,1,1) * hit_diffuse;
 
   // Lock vdata for our voxel.
-  bool done = false;
+  int triesleft = 1; // Don't block for too long.
   uint locked = 0;
-  while (!done) {
+  while (triesleft > 0) {
+    triesleft--;
     locked = atomicExchange(vdata[vloc].lock, 1);
     if (locked == 0) {
       // Begin locked region.
@@ -234,9 +235,8 @@ void main() {
       // End locked region.
       memoryBarrier();
       atomicExchange(vdata[vloc].lock, 0);
-      done = true;
+      triesleft = 0;
     }
-  }
   }
 
   // Ooooh, racey!
