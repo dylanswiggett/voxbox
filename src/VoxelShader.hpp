@@ -37,11 +37,10 @@ struct voxel_data {
   uint illum_r : 16;
   uint illum_g : 16;
   uint illum_b : 16;
-
   uint numrays : 16;
+
   uint diffuse : 8;
-  uint neighbors : 8;
-  
+  uint neighbors : 8; // Unused
   uint flags : 16;
 
   uint lock : 32;

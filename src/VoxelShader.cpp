@@ -72,7 +72,11 @@ VoxelShader::VoxelShader(VoxelData* data,
 	  vd.r = 255 * v.color.r;
 	  vd.g = 255 * v.color.g;
 	  vd.b = 255 * v.color.b;
-	  vd.emittance = 0;
+	  if (v.color.b > v.color.g)
+	    vd.emittance = vd.b;
+	  else
+	    vd.emittance = 0;
+	  vd.diffuse = 100;
 	  vd.illum_r = vd.illum_g = vd.illum_b = 0;
 	  vd.diffuse = vd.numrays = vd.neighbors = 0;
 	  vd.flags = 0;

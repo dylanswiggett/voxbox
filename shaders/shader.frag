@@ -58,6 +58,8 @@ float rand(vec2 co){
 vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
   float u1 = rand(vec2(rand(vec2(seed.x, seed.y)), rand(vec2(seed.z, time))));
   float u2 = rand(vec2(u1, time));
+  u1 = abs(u1);
+  u2 = abs(u2);
   float r = sqrt(1.0 - u1 * u1);
   float phi = 2 * 3.14159 * u2;
   vec3 side2 = cross(norm, side);
@@ -177,6 +179,7 @@ void main() {
     return;
   }
 
+  if (rand(vec2(rand(vec2(pos.x, pos.y)), t)) > .7) {
   ivec3 lightpos = voxel - laststep;
   vec3 norm = -vec3(laststep);
   vec3 side = vec3(norm.y, norm.z, norm.x);
@@ -187,23 +190,14 @@ void main() {
   uint nextvloc;
   voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
 
-  float lighting = 0;
-  vec3 ldir = vec3(1, .1, -1);
-  /*
-  if (voxel.x < 0 && dot(lightdir, ldir) > 0) {
-    lighting = dot(lightdir, ldir);
-  }
-  */
-  if (vdata[vloc].b > vdata[vloc].g) {
-    lighting = float(vdata[vloc].b) / 255;
-  }
-  if (voxel.x > 0) {
-    voxel_data hit = vdata[nextvloc];
-    if (hit.b > hit.g)
-      lighting += float(hit.b) / 20;
-  }
+  voxel_data hitvox = vdata[nextvloc];
+  vec3 hit_color = vd_color(hitvox);
+  // Race condition. Hopefully the artifacts are okay.
+  vec3 hit_illum = vec3(ivec3(hitvox.illum_r, hitvox.illum_g, hitvox.illum_b)) * 10 / float(hitvox.numrays);
+  float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
+  float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
 
-  float actuallight = 0;
+  vec3 lighting = hit_color * hit_emit + hit_illum * hit_color * hit_diffuse;
 
   // Lock vdata for our voxel.
   bool done = false;
@@ -213,18 +207,29 @@ void main() {
     if (locked == 0) {
       // Begin locked region.
 
+      // TODO: Remove magic numbers.
       if (vdata[vloc].numrays >= uint16_t(5000)) {
 	vdata[vloc].numrays -= uint16_t(2000);
 	vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * 3.0 / 5.0);
+	vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * 3.0 / 5.0);
+	vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * 3.0 / 5.0);
       } else {
 	vdata[vloc].numrays++;
-	vdata[vloc].illum_r += uint16_t(10 * lighting);
-	if (vdata[vloc].illum_r > vdata[vloc].numrays * uint16_t(10))
-	  vdata[vloc].illum_r = vdata[vloc].numrays * uint16_t(10);
+	vdata[vloc].illum_r += uint16_t(10 * lighting.r);
+      	vdata[vloc].illum_g += uint16_t(10 * lighting.g);
+	vdata[vloc].illum_b += uint16_t(10 * lighting.b);
+	if (vdata[vloc].illum_r > vdata[vloc].numrays * uint16_t(10) ||
+	    vdata[vloc].illum_g > vdata[vloc].numrays * uint16_t(10) ||
+	    vdata[vloc].illum_b > vdata[vloc].numrays * uint16_t(10)) {
+	  float minscale =
+	    min(float(vdata[vloc].numrays) * 10 / float(vdata[vloc].illum_r),
+		min(float(vdata[vloc].numrays) * 10 / float(vdata[vloc].illum_g),
+		    float(vdata[vloc].numrays) * 10 / float(vdata[vloc].illum_b)));
+	  vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * minscale);
+	  vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * minscale);
+	  vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * minscale);
+	}
       }
-
-      actuallight = float(vdata[vloc].illum_r) / float(vdata[vloc].numrays) / 10;
-      actuallight = clamp(actuallight, 0, 1);
 
       // End locked region.
       memoryBarrier();
@@ -232,15 +237,13 @@ void main() {
       done = true;
     }
   }
-
-  /*
-  atomicAdd(vdata[vloc].metadata, 10);
-  vec3 ldir = vec3(1,.5,-.2);
-  if (voxel.x < 0 && dot(lightdir, ldir) > 0) {
-    atomicAdd(vdata[vloc].lighting, int(10 * dot(lightdir, ldir)));
   }
-  */
 
-  color = vec3(vd_color(vdata[vloc])) * actuallight;
+  // Ooooh, racey!
+  color = vd_color(vdata[vloc]) *
+    (vec3(1,1,1) * vdata[vloc].emission / 10 +
+     vec3(vdata[vloc].illum_r, vdata[vloc].illum_g, vdata[vloc].illum_b) /
+     (10.0 * float(vdata[vloc].numrays)));
+  color = clamp(color, 0, 1);
   return;
 }
