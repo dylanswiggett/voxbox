@@ -56,13 +56,9 @@ float rand(vec2 co){
 }
 
 vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
-  // Random code -> random numbers, right?
-  float u1 = rand(vec2(rand(vec2(seed.x, seed.y)), 100 * rand(vec2(seed.z, float(time)))));
-  float u2 = rand(vec2(u1 * seed.x, float(time) / 100));
-  u1 = abs(u1);
-  u2 = abs(u2);
-  u1 -= floor(u1);
-  u2 -= floor(u2);
+  // This distribution seems good enough.
+  float u1 = rand(vec2(seed.x, time + seed.y));
+  float u2 = rand(vec2(seed.x, time + seed.z));
   float r = sqrt(1.0 - u1 * u1);
   float phi = 2 * 3.14159 * u2;
   vec3 side2 = normalize(cross(norm, side));
@@ -153,6 +149,7 @@ void main() {
   c2 = corner + dim;
   
   vec3 cameradir = -normalize(dim);
+  
   vec3 right = normalize(cross(cameradir, vec3(0,1,0)));
   vec3 up = cross(right, cameradir);
   // TODO: Figure out why 25 is a good parameter here...
@@ -185,21 +182,25 @@ void main() {
   ivec3 lightpos = voxel - laststep;
   vec3 norm = -vec3(laststep);
   vec3 side = vec3(norm.y, norm.z, norm.x);
-  vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel)));
+  vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel.x, pos.x, pos.y)));
   vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + vec3(.5,.5,.5));
 
   ivec3 nextlaststep;
   uint nextvloc;
   voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
 
-  voxel_data hitvox = vdata[nextvloc];
-  vec3 hit_color = vd_color(hitvox);
-  // Race condition. Hopefully the artifacts are okay.
-  vec3 hit_illum = vec3(ivec3(hitvox.illum_r, hitvox.illum_g, hitvox.illum_b)) * 10 / float(hitvox.numrays);
-  float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
-  float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
-
-  vec3 lighting = hit_color * (hit_emit + hit_illum * hit_diffuse / 10);
+  vec3 lighting = vec3(0,0,0);
+  if (voxel.x >= 0) {
+    voxel_data hitvox = vdata[nextvloc];
+    vec3 hit_color = vd_color(hitvox);
+    // Race condition. Hopefully the artifacts are okay.
+    vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
+				hitvox.illum_g,
+				hitvox.illum_b)) * 10 / float(hitvox.numrays);
+    float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
+    float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
+    lighting = hit_color * (hit_emit + hit_illum * hit_diffuse / 10);
+  }
   //vec3 lighting = vec3(1,1,1) * hit_diffuse;
 
   // Lock vdata for our voxel.
