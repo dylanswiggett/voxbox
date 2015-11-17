@@ -152,6 +152,10 @@ void main() {
   vec3 up = cross(right, cameradir);
   // TODO: Figure out why 25 is a good parameter here...
   vec3 camerapos = corner + dim + (right * pos.x + up * pos.y) * 25;
+
+  float tscaled = float(time) / 100;
+  float s = sin(tscaled);
+  float c = cos (tscaled);
   
   // This line enables (crazy) perspective:
   //cameradir = normalize(-dim + 20 * sin(float(time) / 10) * (right * pos.x + up * pos.y));
@@ -184,9 +188,19 @@ void main() {
   voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
 
   float lighting = 0;
-  vec3 ldir = vec3(1, .5, 1);
+  vec3 ldir = vec3(1, .1, -1);
+  /*
   if (voxel.x < 0 && dot(lightdir, ldir) > 0) {
     lighting = dot(lightdir, ldir);
+  }
+  */
+  if (vdata[vloc].b > vdata[vloc].g) {
+    lighting = float(vdata[vloc].b) / 255;
+  }
+  if (voxel.x > 0) {
+    voxel_data hit = vdata[nextvloc];
+    if (hit.b > hit.g)
+      lighting += float(hit.b) / 20;
   }
 
   float actuallight = 0;
@@ -204,10 +218,13 @@ void main() {
 	vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * 3.0 / 5.0);
       } else {
 	vdata[vloc].numrays++;
-	vdata[vloc].illum_r += uint16_t(lighting);
+	vdata[vloc].illum_r += uint16_t(10 * lighting);
+	if (vdata[vloc].illum_r > vdata[vloc].numrays * uint16_t(10))
+	  vdata[vloc].illum_r = vdata[vloc].numrays * uint16_t(10);
       }
 
-      actuallight = float(vdata[vloc].illum_r) / float(vdata[vloc].numrays);
+      actuallight = float(vdata[vloc].illum_r) / float(vdata[vloc].numrays) / 10;
+      actuallight = clamp(actuallight, 0, 1);
 
       // End locked region.
       memoryBarrier();
