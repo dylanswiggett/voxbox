@@ -56,13 +56,16 @@ float rand(vec2 co){
 }
 
 vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
-  float u1 = rand(vec2(rand(vec2(seed.x, seed.y)), rand(vec2(seed.z, time))));
-  float u2 = rand(vec2(u1, time));
+  // Random code -> random numbers, right?
+  float u1 = rand(vec2(rand(vec2(seed.x, seed.y)), 100 * rand(vec2(seed.z, float(time)))));
+  float u2 = rand(vec2(u1 * seed.x, float(time) / 100));
   u1 = abs(u1);
   u2 = abs(u2);
+  u1 -= floor(u1);
+  u2 -= floor(u2);
   float r = sqrt(1.0 - u1 * u1);
   float phi = 2 * 3.14159 * u2;
-  vec3 side2 = cross(norm, side);
+  vec3 side2 = normalize(cross(norm, side));
   return u1 * norm + cos(phi) * r * side + sin(phi) * r * side2;
 }
 
@@ -196,7 +199,7 @@ void main() {
   float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
   float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
 
-  vec3 lighting = hit_color * hit_emit + hit_illum * hit_color * hit_diffuse;
+  vec3 lighting = hit_color * (hit_emit + hit_illum * hit_diffuse / 10);
   //vec3 lighting = vec3(1,1,1) * hit_diffuse;
 
   // Lock vdata for our voxel.
