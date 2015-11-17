@@ -161,7 +161,7 @@ void main() {
   
   // This line enables (crazy) perspective:
   //cameradir = normalize(-dim + 20 * sin(float(time) / 10) * (right * pos.x + up * pos.y));
-  //cameradir = normalize(-dim + 20 * (right * pos.x + up * pos.y));
+  //cameradir = normalize(-dim + 10 * (right * pos.x + up * pos.y));
 
   float t = intersection(camerapos, cameradir);
   if (t == 0) {
@@ -179,30 +179,6 @@ void main() {
     return;
   }
 
-  ivec3 lightpos = voxel - laststep;
-  vec3 norm = -vec3(laststep);
-  vec3 side = vec3(norm.y, norm.z, norm.x);
-  vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel.x, pos.x, pos.y)));
-  vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + vec3(.5,.5,.5));
-
-  ivec3 nextlaststep;
-  uint nextvloc;
-  voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
-
-  vec3 lighting = vec3(0,0,0);
-  if (voxel.x >= 0) {
-    voxel_data hitvox = vdata[nextvloc];
-    vec3 hit_color = vd_color(hitvox);
-    // Race condition. Hopefully the artifacts are okay.
-    vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
-				hitvox.illum_g,
-				hitvox.illum_b)) * 10 / float(hitvox.numrays);
-    float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
-    float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
-    lighting = hit_color * (hit_emit + hit_illum * hit_diffuse / 10);
-  }
-  //vec3 lighting = vec3(1,1,1) * hit_diffuse;
-
   // Lock vdata for our voxel.
   int triesleft = 1; // Don't block for too long.
   uint locked = 0;
@@ -211,6 +187,34 @@ void main() {
     locked = atomicExchange(vdata[vloc].lock, 1);
     if (locked == 0) {
       // Begin locked region.
+
+      // Only check lighting if we have the lock to avoid wasted rays.
+      ivec3 lightpos = voxel - laststep;
+      vec3 norm = -vec3(laststep);
+      vec3 side = vec3(norm.y, norm.z, norm.x);
+      vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel.x, pos.x, pos.y)));
+      vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + vec3(.5,.5,.5));
+
+      ivec3 nextlaststep;
+      uint nextvloc;
+      voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
+
+      vec3 lighting = vec3(0,0,0);
+      if (voxel.x >= 0) {
+	voxel_data hitvox = vdata[nextvloc];
+	vec3 hit_color = vd_color(hitvox);
+	vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
+				    hitvox.illum_g,
+				    hitvox.illum_b)) * 10 / float(hitvox.numrays);
+	float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
+	float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
+	vec3 direct_lighting = hit_color * hit_emit;
+	vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse / 10;
+	lighting = max(direct_lighting, indirect_lighting);
+	//lighting = hit_color * (hit_emit + hit_illum * hit_diffuse / 10);
+      } else {
+	//lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
+      }
 
       // TODO: Remove magic numbers.
       if (vdata[vloc].numrays >= uint16_t(5000)) {
