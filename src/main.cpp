@@ -67,15 +67,15 @@ int main(int argc, char** argv)
   d.addVoxels(new BoxVoxelData(vec3(1,1,5), vec3(5,18,13), vec3(.6,.2,0)));
   d.addVoxels(new BoxVoxelData(vec3(11,15,10), vec3(2,3,1), vec3(.6,.2,.4)));
   d.addVoxels(new BoxVoxelData(vec3(1,0,1), vec3(18,5,18), vec3(0,1,.3)));
-  d.addVoxels(new BoxVoxelData(vec3(10,10,13), vec3(3,5,3), vec3(1,1,1)));
-  d.addVoxels(new BoxVoxelData(vec3(11,10,13), vec3(3,4,3), vec3(1,1,1)));
-  d.addVoxels(new BoxVoxelData(vec3(12,10,13), vec3(3,3,3), vec3(1,1,1)));
-  d.addVoxels(new BoxVoxelData(vec3(13,10,13), vec3(3,2,3), vec3(1,1,1)));
-  d.addVoxels(new BoxVoxelData(vec3(14,10,13), vec3(3,1,3), vec3(1,1,1)));
+  d.addVoxels(new BoxVoxelData(vec3(10,5,13), vec3(3,10,3), vec3(1,1,1)));
+  d.addVoxels(new BoxVoxelData(vec3(11,5,13), vec3(3,9,3), vec3(1,1,1)));
+  d.addVoxels(new BoxVoxelData(vec3(12,5,13), vec3(3,8,3), vec3(1,1,1)));
+  d.addVoxels(new BoxVoxelData(vec3(13,5,13), vec3(3,7,3), vec3(1,1,1)));
+  d.addVoxels(new BoxVoxelData(vec3(14,5,13), vec3(3,6,3), vec3(1,1,1)));
   d.addVoxels(new BoxVoxelData(vec3(14,10,17), vec3(2,2,2), vec3(0,.3,.5)));
   VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 50, 50, 50);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
-  // VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 200, 200, 200);
+  //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 200, 200, 200);
   
   running = true;
   // Main event/draw loop.
