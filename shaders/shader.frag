@@ -57,8 +57,8 @@ float rand(vec2 co){
 
 vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
   // This distribution seems good enough.
-  float u1 = rand(vec2(seed.x, time + seed.y));
-  float u2 = rand(vec2(seed.x, time + seed.z));
+  float u1 = rand(vec2(time - seed.x, time + seed.y));
+  float u2 = rand(vec2(time - seed.x, time + seed.z));
   float r = sqrt(1.0 - u1 * u1);
   float phi = 2 * 3.14159 * u2;
   vec3 side2 = normalize(cross(norm, side));
@@ -193,7 +193,7 @@ void main() {
       vec3 norm = -vec3(laststep);
       vec3 side = vec3(norm.y, norm.z, norm.x);
       vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel.x, pos.x, pos.y)));
-      vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + vec3(.5,.5,.5));
+      vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + .5);
 
       ivec3 nextlaststep;
       uint nextvloc;
@@ -212,7 +212,7 @@ void main() {
 	vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
 	lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
       } else {
-	lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
+	//lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
       }
 
       // TODO: Remove magic numbers.
