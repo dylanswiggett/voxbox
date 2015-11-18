@@ -3,6 +3,7 @@
 
 layout(location = 0) out vec3 color;
 
+// TODO: Probably have optionally 8 separate illumination values (1 for each side)
 struct voxel_data {
   uint8_t r, g, b;
   uint8_t emission;
@@ -22,31 +23,10 @@ vec3 vd_color(struct voxel_data vd) {
   return vec3(ivec3(vd.r,vd.g,vd.b)) / 255;
 }
 
-// These don't work :(
-/*
-bool lock_voxel(uint vloc) {
-  int maxtries = 1000;
-  while (maxtries > 0) {
-    maxtries--;
-    if (atomicExchange(vdata[vloc].lock, 1) == 0)
-      return true;
-  }
-  return false;
-}
-
-void unlock_voxel(uint vloc) {
-  memoryBarrier();
-  atomicExchange(vdata[vloc].lock, 0);
-}
-*/
-
 uniform usampler3D voxels;
-
 uniform ivec2 wsize;
-
 uniform vec3 corner, dim;
 uniform ivec3 nvoxels;
-
 uniform int time;
 
 vec3 c1, c2;
@@ -65,6 +45,7 @@ vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
   return u1 * norm + cos(phi) * r * side + sin(phi) * r * side2;
 }
 
+// TODO: Rays can be generated in advance! Store as a tex.
 ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
   vec3 voxelScale = (dim - corner) / nvoxels;
   ivec3 steps = ivec3(sign(dir));
@@ -80,6 +61,8 @@ ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
   vec3 maxs = max(curVoxelOffset * steps, (curVoxelOffset - voxelScale) * steps) / dir;
   
   vec3 deltas = abs(voxelScale / dir);
+
+  vec3 nvoxelrecip = vec3(1,1,1) / nvoxels;
   
   int maxtest = 1000; // Just to avoid infinite loops :)
   while (maxtest > 0) {
@@ -87,7 +70,7 @@ ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
     maxtest -= 1;
 
     // Are we in a voxel?
-    vloc = texture(voxels, vec3(curVoxel) / nvoxels).r;
+    vloc = texture(voxels, vec3(curVoxel) * nvoxelrecip).r;
     if (vloc != 0) {
       vloc -= 1;
       return curVoxel;
@@ -98,13 +81,13 @@ ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
 	curVoxel.x += steps.x;
 	laststep = ivec3(steps.x, 0, 0);
 	if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x)
-	  break;
+	  return ivec3(-1,-1,-1);
 	maxs.x += deltas.x;
       } else {
 	curVoxel.z += steps.z;
   	laststep = ivec3(0, 0, steps.z);
 	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
-	  break;
+	  return ivec3(-1,-1,-1);
 	maxs.z += deltas.z;
       }
     } else {
@@ -112,13 +95,13 @@ ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
 	curVoxel.y += steps.y;
 	laststep = ivec3(0, steps.y, 0);
 	if (curVoxel.y < 0 || curVoxel.y >= nvoxels.y)
-	  break;
+	  return ivec3(-1,-1,-1);
 	maxs.y += deltas.y;
       } else {
 	curVoxel.z += steps.z;
 	laststep = ivec3(0, 0, steps.z);
 	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
-	  break;
+	  return ivec3(-1,-1,-1);
 	maxs.z += deltas.z;
       }
     }
@@ -179,41 +162,41 @@ void main() {
     return;
   }
 
+  // Only check lighting if we have the lock to avoid wasted rays.
+  ivec3 lightpos = voxel - laststep;
+  vec3 norm = -vec3(laststep);
+  vec3 side = vec3(norm.y, norm.z, norm.x);
+  vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel.x, pos.x, pos.y)));
+  vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + .5);
+
+  ivec3 nextlaststep;
+  uint nextvloc;
+  voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
+
+  vec3 lighting = vec3(0,0,0);
+  if (voxel.x >= 0) {
+    voxel_data hitvox = vdata[nextvloc];
+    vec3 hit_color = vd_color(hitvox);
+    vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
+				hitvox.illum_g,
+				hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
+    float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
+    float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
+    vec3 direct_lighting = hit_color * hit_emit;
+    vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
+    lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
+  } else {
+    //lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
+  }
+
   // Lock vdata for our voxel.
-  int triesleft = 1; // Don't block for too long.
+  int triesleft = 10; // Don't block for too long.
   uint locked = 0;
   while (triesleft > 0) {
     triesleft--;
     locked = atomicExchange(vdata[vloc].lock, 1);
     if (locked == 0) {
       // Begin locked region.
-
-      // Only check lighting if we have the lock to avoid wasted rays.
-      ivec3 lightpos = voxel - laststep;
-      vec3 norm = -vec3(laststep);
-      vec3 side = vec3(norm.y, norm.z, norm.x);
-      vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel.x, pos.x, pos.y)));
-      vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + .5);
-
-      ivec3 nextlaststep;
-      uint nextvloc;
-      voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
-
-      vec3 lighting = vec3(0,0,0);
-      if (voxel.x >= 0) {
-	voxel_data hitvox = vdata[nextvloc];
-	vec3 hit_color = vd_color(hitvox);
-	vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
-				    hitvox.illum_g,
-				    hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
-	float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
-	float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
-	vec3 direct_lighting = hit_color * hit_emit;
-	vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
-	lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
-      } else {
-	//lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
-      }
 
       // TODO: Remove magic numbers.
       int maxsample = 5000;
