@@ -190,7 +190,7 @@ void main() {
   }
 
   // Lock vdata for our voxel.
-  int triesleft = 10; // Don't block for too long.
+  int triesleft = 5; // Don't block for too long.
   uint locked = 0;
   while (triesleft > 0) {
     triesleft--;
