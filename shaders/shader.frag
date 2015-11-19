@@ -46,6 +46,70 @@ vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
   return u1 * norm + cos(phi) * r * side + sin(phi) * r * side2;
 }
 
+ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
+  vec3 voxelScale = (dim - corner) / nvoxels;
+  vec3 offset = pos - corner;
+  ivec3 curVoxel = ivec3(floor(offset / voxelScale));
+  vec3 curVoxelOffset = offset - voxelScale * curVoxel;
+
+  ivec3 stepx = ivec3(-1,0,0);
+  ivec3 stepy = ivec3(0,-1,0);
+  ivec3 stepz = ivec3(0,0,-1);
+  ivec3 step1, step2, step3;
+
+  float x = curVoxelOffset.x;
+  float y = curVoxelOffset.y;
+  float z = curVoxelOffset.z;
+
+  if (x > y)
+    if (x > z) {
+      if (y > z) { // z, y, x
+	step1 = stepz; step2 = stepy; step3 = stepx;
+      } else { // y, z, x
+	step1 = stepy; step2 = stepz; step3 = stepx;
+      }
+    } else { // y, x, z
+      step1 = stepy; step2 = stepx; step3 = stepz;
+    }
+  else
+    if (y > z) {
+      if (x > z) { // z, x, y
+	step1 = stepz; step2 = stepx; step3 = stepy;
+      } else { // x, z, y
+	step1 = stepx; step2 = stepz; step3 = stepy;
+      }
+    } else { // x, y, z
+      step1 = stepx; step2 = stepy; step3 = stepz;
+    }
+
+  do {
+    curVoxel += step1;
+    vloc = texelFetch(voxels, curVoxel, 0).r;
+    if (vloc != 0) {
+      vloc -= 1;
+      laststep = step1;
+      return curVoxel;
+    }
+
+    curVoxel += step2;
+    vloc = texelFetch(voxels, curVoxel, 0).r;
+    if (vloc != 0) {
+      vloc -= 1;
+      laststep = step2;
+      return curVoxel;
+    }
+
+    curVoxel += step3;
+    vloc = texelFetch(voxels, curVoxel, 0).r;
+    if (vloc != 0) {
+      vloc -= 1;
+      laststep = step3;
+      return curVoxel;
+    }
+  } while (curVoxel.x != 0 && curVoxel.y != 0 && curVoxel.z != 0);
+  return ivec3(-1,-1,-1);
+}
+
 // TODO: Rays can be generated in advance! Store as a tex.
 ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
   vec3 voxelScale = (dim - corner) / nvoxels;
@@ -63,15 +127,13 @@ ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
   
   vec3 deltas = abs(voxelScale / dir);
 
-  vec3 nvoxelrecip = vec3(1,1,1) / nvoxels;
-  
   int maxtest = 1000; // Just to avoid infinite loops :)
   while (maxtest > 0) {
     // TODO: Optimize these divisions!
     maxtest -= 1;
 
     // Are we in a voxel?
-    vloc = texture(voxels, vec3(curVoxel) * nvoxelrecip).r;
+    vloc = texelFetch(voxels, curVoxel, 0).r;
     if (vloc != 0) {
       vloc -= 1;
       return curVoxel;
@@ -157,7 +219,8 @@ void main() {
 
   uint vloc;
   ivec3 laststep;
-  ivec3 voxel = raymarch(camerapos, cameradir, vloc, laststep);
+  ivec3 voxel = isoraymarch(camerapos, vloc, laststep);
+  //ivec3 voxel = raymarch(camerapos, cameradir, vloc, laststep);
   if (voxel.x < 0) {
     color = vec3(.2, .2, .4);
     return;
@@ -192,7 +255,7 @@ void main() {
   }
 
   // Lock vdata for our voxel.
-  int triesleft = 5; // Don't block for too long.
+  int triesleft = 1; // Don't block for too long.
   uint locked = 0;
   while (triesleft > 0) {
     triesleft--;
@@ -203,8 +266,8 @@ void main() {
       // TODO: Remove magic numbers.
       int maxsample = 5000;
       int minussample = 2000;
-      float downscale = float(maxsample - minussample) / maxsample;
       if (vdata[vloc].numrays >= uint16_t(maxsample)) {
+	float downscale = float(maxsample - minussample) / maxsample;
 	vdata[vloc].numrays -= uint16_t(minussample);
 	vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * downscale);
 	vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * downscale);
@@ -217,10 +280,8 @@ void main() {
 	if (vdata[vloc].illum_r > vdata[vloc].numrays * uint16_t(10) ||
 	    vdata[vloc].illum_g > vdata[vloc].numrays * uint16_t(10) ||
 	    vdata[vloc].illum_b > vdata[vloc].numrays * uint16_t(10)) {
-	  float minscale =
-	    min(float(vdata[vloc].numrays) * 10 / float(vdata[vloc].illum_r),
-		min(float(vdata[vloc].numrays) * 10 / float(vdata[vloc].illum_g),
-		    float(vdata[vloc].numrays) * 10 / float(vdata[vloc].illum_b)));
+	  float minscale = float(vdata[vloc].numrays) * 10 /
+	    max(float(vdata[vloc].illum_r), max(float(vdata[vloc].illum_g), float(vdata[vloc].illum_b)));
 	  vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * minscale);
 	  vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * minscale);
 	  vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * minscale);
