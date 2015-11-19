@@ -126,12 +126,12 @@ ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
       curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
       curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
     return ivec3(-1, -1, -1); // Edge case (hurr durr)
-  vec3 curVoxelOffset = offset - voxelScale * curVoxel;
-  vec3 maxs = max(curVoxelOffset * steps, (curVoxelOffset - voxelScale) * steps) / dir;
+  lowp vec3 curVoxelOffset = offset - voxelScale * curVoxel;
+  lowp vec3 maxs = max(curVoxelOffset * steps, (curVoxelOffset - voxelScale) * steps) / dir;
   
   vec3 deltas = abs(voxelScale / dir);
 
-  int maxtest = 1000; // Just to avoid infinite loops :)
+  int maxtest = 100; // Just to avoid infinite loops :)
   while (maxtest > 0) {
     // TODO: Optimize these divisions!
     maxtest -= 1;
@@ -219,7 +219,7 @@ void main() {
     return;
   }
 
-  camerapos += cameradir * (t + .1);
+  camerapos += cameradir * t;
 
   uint vloc;
   ivec3 laststep;
@@ -260,7 +260,7 @@ void main() {
       vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
       lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
     } else {
-      lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
+      //lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
     }
   }
 
