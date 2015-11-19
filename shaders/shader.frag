@@ -23,6 +23,7 @@ vec3 vd_color(struct voxel_data vd) {
   return vec3(ivec3(vd.r,vd.g,vd.b)) / 255;
 }
 
+uniform usampler2D rays;
 uniform usampler3D voxels;
 uniform ivec2 wsize;
 uniform vec3 corner, dim;
@@ -136,7 +137,7 @@ void main() {
   vec3 right = normalize(cross(cameradir, vec3(0,1,0)));
   vec3 up = cross(right, cameradir);
   // TODO: Figure out why 25 is a good parameter here...
-  vec3 camerapos = corner + dim + (right * pos.x + up * pos.y) * 25;
+  vec3 camerapos = corner + dim + (right * pos.x + up * pos.y) * length(dim) / 2;
 
   float tscaled = float(time) / 100;
   float s = sin(tscaled);
@@ -162,7 +163,8 @@ void main() {
     return;
   }
 
-  // Only check lighting if we have the lock to avoid wasted rays.
+  // We might not use this if we don't get the lock, but generating it
+  // is cheap enough that's it worth it for faster convergence.
   ivec3 lightpos = voxel - laststep;
   vec3 norm = -vec3(laststep);
   vec3 side = vec3(norm.y, norm.z, norm.x);

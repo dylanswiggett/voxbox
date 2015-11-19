@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 
   d.addVoxels(new BoxVoxelData(vec3(0,19,0), vec3(20, 1, 3), Voxel(vec3(1,1,1), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(0,0,0), vec3(1, 20, 20), Voxel(vec3(1,1,1), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(19,0,0), vec3(1, 30, 3), Voxel(vec3(1,1,1), 0, 255)));
+  d.addVoxels(new BoxVoxelData(vec3(19,0,0), vec3(1, 20, 3), Voxel(vec3(1,1,1), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(1,1,1), vec3(18, 18, 1), Voxel(vec3(1,1,1), 255, 0)));
   d.addVoxels(new BoxVoxelData(vec3(1,1,2), vec3(2, 18, 1), Voxel(vec3(1,.3,.3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(5,1,2), vec3(2, 18, 1), Voxel(vec3(.3,1,.3), 0, 255)));
