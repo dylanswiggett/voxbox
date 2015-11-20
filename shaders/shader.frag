@@ -186,82 +186,68 @@ void main() {
     return;
   }
 
-  int triesleft = 1; // Don't block for too long.
-
-  if (vdata[vloc].flags == uint16_t(time % 10))
-    triesleft = 0;
-
   // Lock vdata for our voxel.
   uint locked = 0;
-  while (triesleft > 0) {
-    triesleft--;
-    if (vdata[vloc].lock == 0)
-      locked = atomicExchange(vdata[vloc].lock, 1);
-    else
-      locked = 1;
-    if (locked == 0) {
-      // Begin locked region.
+  if (vdata[vloc].flags != uint16_t(time % 10) && vdata[vloc].lock == 0)
+    locked = atomicExchange(vdata[vloc].lock, 1);
+  else
+    locked = 1;
+  if (locked == 0) {
+    // Begin locked region.
 
-      if (vdata[vloc].flags == uint16_t(time % 10)) {
-	memoryBarrier();
-	atomicExchange(vdata[vloc].lock, 0);
-	triesleft = 0;
-	continue;
-      }
-
-      // We might not use this if we don't get the lock, but generating it
-      // is cheap enough that's it worth it for faster convergence.
-      ivec3 lightpos = voxel - laststep;
-      uint nextvloc;
-      vec3 lighting = vec3(0,0,0);
-      if (raymarch(lightpos, -laststep, nextvloc)) {
-	voxel_data hitvox = vdata[nextvloc];
-	vec3 hit_color = vd_color(hitvox);
-	vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
-				    hitvox.illum_g,
-				    hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
-	float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
-	float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
-	vec3 direct_lighting = hit_color * hit_emit;
-	vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
-	lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
-      } else {
-	lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
-      }
-
-
-      // TODO: Remove magic numbers.
-      int maxsample = 5000;
-      int minussample = 2000;
-      if (vdata[vloc].numrays >= uint16_t(maxsample)) {
-	float downscale = float(maxsample - minussample) / maxsample;
-	vdata[vloc].numrays -= uint16_t(minussample);
-	vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * downscale);
-	vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * downscale);
-	vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * downscale);
-      } else {
-	vdata[vloc].numrays++;
-	vdata[vloc].illum_r += uint16_t(10 * lighting.r);
-      	vdata[vloc].illum_g += uint16_t(10 * lighting.g);
-	vdata[vloc].illum_b += uint16_t(10 * lighting.b);
-	if (vdata[vloc].illum_r > vdata[vloc].numrays * uint16_t(10) ||
-	    vdata[vloc].illum_g > vdata[vloc].numrays * uint16_t(10) ||
-	    vdata[vloc].illum_b > vdata[vloc].numrays * uint16_t(10)) {
-	  float minscale = float(vdata[vloc].numrays) * 10 /
-	    max(float(vdata[vloc].illum_r), max(float(vdata[vloc].illum_g), float(vdata[vloc].illum_b)));
-	  vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * minscale);
-	  vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * minscale);
-	  vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * minscale);
-	}
-      }
-
-      vdata[vloc].flags = uint16_t(time % 10);
-
-      // End locked region.
-      memoryBarrier();
-      atomicExchange(vdata[vloc].lock, 0);
-      triesleft = 0;
+    // We might not use this if we don't get the lock, but generating it
+    // is cheap enough that's it worth it for faster convergence.
+    ivec3 lightpos = voxel - laststep;
+    uint nextvloc;
+    vec3 lighting = vec3(0,0,0);
+    if (raymarch(lightpos, -laststep, nextvloc)) {
+      voxel_data hitvox = vdata[nextvloc];
+      vec3 hit_color = vd_color(hitvox);
+      vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
+				  hitvox.illum_g,
+				  hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
+      float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
+      float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
+      vec3 direct_lighting = hit_color * hit_emit;
+      vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
+      lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
+    } else {
+      lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
     }
+
+
+    // TODO: Remove magic numbers.
+    int maxsample = 5000;
+    int minussample = 2000;
+    if (vdata[vloc].numrays >= uint16_t(maxsample)) {
+      float downscale = float(maxsample - minussample) / maxsample;
+      vdata[vloc].numrays -= uint16_t(minussample);
+      vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * downscale);
+      vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * downscale);
+      vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * downscale);
+    } else {
+      vdata[vloc].numrays++;
+      vdata[vloc].illum_r += uint16_t(10 * lighting.r);
+      vdata[vloc].illum_g += uint16_t(10 * lighting.g);
+      vdata[vloc].illum_b += uint16_t(10 * lighting.b);
+      if (vdata[vloc].illum_r > vdata[vloc].numrays * uint16_t(10) ||
+	  vdata[vloc].illum_g > vdata[vloc].numrays * uint16_t(10) ||
+	  vdata[vloc].illum_b > vdata[vloc].numrays * uint16_t(10)) {
+	float minscale = float(vdata[vloc].numrays) * 10 /
+	  max(float(vdata[vloc].illum_r), max(float(vdata[vloc].illum_g), float(vdata[vloc].illum_b)));
+	vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * minscale);
+	vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * minscale);
+	vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * minscale);
+      }
+    }
+
+    vdata[vloc].flags = uint16_t(time % 10);
+
+    // End locked region.
+    // memoryBarrier();
+    atomicExchange(vdata[vloc].lock, 0);
+  } else if (locked == 0) {
+    atomicExchange(vdata[vloc].lock, 0);
   }
 
   // Ooooh, racey!
