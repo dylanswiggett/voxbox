@@ -29,7 +29,7 @@ uniform vec3 corner, dim;
 uniform ivec3 nvoxels;
 uniform int time;
 
-uniform ivec3 ray[150];
+uniform ivec3 ray[400];
 uniform vec3 raydir;
 
 vec3 c1, c2;
@@ -109,9 +109,9 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
 bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
   int i = 0;
   ivec3 scale = ivec3(1,1,1);
-  int r1 = 1 - 2 * int(round(rand(vec2(pos.x, time))));
-  int r2 = 1 - 2 * int(round(rand(vec2(pos.y, time))));
-  int r3 = 1 - 2 * int(round(rand(vec2(pos.z, time))));
+  int r1 = 1 - 2 * int(round(rand(vec2(pos.x * pos.y, time))));
+  int r2 = 1 - 2 * int(round(rand(vec2(pos.y * pos.z, time))));
+  int r3 = 1 - 2 * int(round(rand(vec2(pos.z * pos.x, time))));
   scale *= ivec3(r1, r2, r3);
   if (dot(norm, raydir) < 0)
     scale += -2 * abs(norm);
@@ -188,6 +188,9 @@ void main() {
 
   int triesleft = 1; // Don't block for too long.
 
+  if (vdata[vloc].flags == uint16_t(time % 10))
+    triesleft = 0;
+
   // Lock vdata for our voxel.
   uint locked = 0;
   while (triesleft > 0) {
@@ -198,6 +201,13 @@ void main() {
       locked = 1;
     if (locked == 0) {
       // Begin locked region.
+
+      if (vdata[vloc].flags == uint16_t(time % 10)) {
+	memoryBarrier();
+	atomicExchange(vdata[vloc].lock, 0);
+	triesleft = 0;
+	continue;
+      }
 
       // We might not use this if we don't get the lock, but generating it
       // is cheap enough that's it worth it for faster convergence.
@@ -215,6 +225,8 @@ void main() {
 	vec3 direct_lighting = hit_color * hit_emit;
 	vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
 	lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
+      } else {
+	lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
       }
 
 
@@ -242,6 +254,8 @@ void main() {
 	  vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * minscale);
 	}
       }
+
+      vdata[vloc].flags = uint16_t(time % 10);
 
       // End locked region.
       memoryBarrier();
