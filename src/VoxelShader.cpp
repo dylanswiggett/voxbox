@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdint>
+#include <cstdlib>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -145,6 +146,13 @@ void VoxelShader::draw(int w, int h)
   loc = glGetUniformLocation(prog_, "time");
   glUniform1i(loc, t++);
 
+  glm::vec3 dir;
+  vector<glm::ivec3> ray = makeray(nx_ + ny_ + nz_, &dir);
+  loc = glGetUniformLocation(prog_, "ray");
+  glUniform3iv(loc, ray.size(), (GLint*)&ray[0]);
+  loc = glGetUniformLocation(prog_, "raydir");
+  glUniform3f(loc, dir.x, dir.y, dir.z);
+
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
   loc = glGetUniformLocation(prog_, "voxels");
@@ -164,4 +172,43 @@ void VoxelShader::draw(int w, int h)
   check_GLerror();
 
   glUseProgram(0);
+}
+
+std::vector<glm::ivec3> VoxelShader::makeray(int maxlen, glm::vec3 *dir_out)
+{
+  // Sample direction on a sphere.
+  double r1 = 1.0 - 2.0 * ((float)rand() / RAND_MAX);
+  double r2 = (float)rand() / RAND_MAX;
+  double r = glm::sqrt(1.0 - r1 * r1);
+  double phi = 2 * 3.14159 * r2;
+  glm::vec3 dir(r1, cos(phi) * r, sin(phi) * r);
+  *dir_out = dir;
+  //cout << dir.x << ", " << dir.y << ", " << dir.z << endl;
+
+  // Find steps to sample path, starting in center of voxel.
+  glm::vec3 maxs(abs(dir.x * .5),
+		 abs(dir.y * .5),
+		 abs(dir.z * .5));
+  glm::vec3 deltas(abs(1.0 / dir.x),
+		   abs(1.0 / dir.y),
+		   abs(1.0 / dir.z));
+  glm::ivec3 step(sign(dir.x), sign(dir.y), sign(dir.z));
+  glm::ivec3 pos(0,0,0);
+  std::vector<glm::ivec3> steps;
+
+  for (int i = 0; i < maxlen; i++) {
+    steps.push_back(pos);
+    if (maxs.x < maxs.y && maxs.x < maxs.z) {
+      pos.x += step.x;
+      maxs.x += deltas.x;
+    } else if (maxs.y < maxs.z) {
+      pos.y += step.y;
+      maxs.y += deltas.y;
+    } else {
+      pos.z += step.z;
+      maxs.z += deltas.z;
+    }
+  }
+
+  return steps;
 }

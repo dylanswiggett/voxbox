@@ -23,27 +23,19 @@ vec3 vd_color(struct voxel_data vd) {
   return vec3(ivec3(vd.r,vd.g,vd.b)) / 255;
 }
 
-uniform usampler2D rays;
 uniform usampler3D voxels;
 uniform ivec2 wsize;
 uniform vec3 corner, dim;
 uniform ivec3 nvoxels;
 uniform int time;
 
+uniform ivec3 ray[150];
+uniform vec3 raydir;
+
 vec3 c1, c2;
 
 float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-}
-
-vec3 hem_rand(vec3 norm, vec3 side, vec3 seed) {
-  // This distribution seems good enough.
-  float u1 = rand(vec2(time - seed.x, time + seed.y));
-  float u2 = rand(vec2(time - seed.x, time + seed.z));
-  float r = sqrt(1.0 - u1 * u1);
-  float phi = 2 * 3.14159 * u2;
-  vec3 side2 = normalize(cross(norm, side));
-  return u1 * norm + cos(phi) * r * side + sin(phi) * r * side2;
 }
 
 ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
@@ -114,66 +106,31 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
   return ivec3(-1,-1,-1);
 }
 
-// TODO: Rays can be generated in advance! Store as a tex.
-ivec3 raymarch(vec3 pos, vec3 dir, out uint vloc, out ivec3 laststep) {
-  vec3 voxelScale = (dim - corner) / nvoxels;
-  ivec3 steps = ivec3(sign(dir));
+bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
+  int i = 0;
+  ivec3 scale = ivec3(1,1,1);
+  int r1 = 1 - 2 * int(round(rand(vec2(pos.x, time))));
+  int r2 = 1 - 2 * int(round(rand(vec2(pos.y, time))));
+  int r3 = 1 - 2 * int(round(rand(vec2(pos.z, time))));
+  scale *= ivec3(r1, r2, r3);
+  if (dot(norm, raydir) < 0)
+    scale += -2 * abs(norm);
+  while (true) {
+    ivec3 offpos = pos + scale * ray[i];
 
-  // TODO: Can maxs be found more efficiently?
-  vec3 offset = pos - corner;
-  ivec3 curVoxel = ivec3(floor(offset / voxelScale));
-  if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x ||
-      curVoxel.y < 0 || curVoxel.y >= nvoxels.y ||
-      curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
-    return ivec3(-1, -1, -1); // Edge case (hurr durr)
-  lowp vec3 curVoxelOffset = offset - voxelScale * curVoxel;
-  lowp vec3 maxs = max(curVoxelOffset * steps, (curVoxelOffset - voxelScale) * steps) / dir;
-  
-  vec3 deltas = abs(voxelScale / dir);
+    if (offpos.x < 0 || offpos.x >= nvoxels.x ||
+	offpos.y < 0 || offpos.y >= nvoxels.y ||
+	offpos.z < 0 || offpos.z >= nvoxels.z)
+      return false;
 
-  int maxtest = 100; // Just to avoid infinite loops :)
-  while (maxtest > 0) {
-    // TODO: Optimize these divisions!
-    maxtest -= 1;
-
-    // Are we in a voxel?
-    vloc = texelFetch(voxels, curVoxel, 0).r;
+    vloc = texelFetch(voxels, offpos, 0).r;
     if (vloc != 0) {
       vloc -= 1;
-      return curVoxel;
+      return true;
     }
 
-    if (maxs.x < maxs.y) {
-      if (maxs.x < maxs.z) {
-	curVoxel.x += steps.x;
-	laststep = ivec3(steps.x, 0, 0);
-	if (curVoxel.x < 0 || curVoxel.x >= nvoxels.x)
-	  return ivec3(-1,-1,-1);
-	maxs.x += deltas.x;
-      } else {
-	curVoxel.z += steps.z;
-  	laststep = ivec3(0, 0, steps.z);
-	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
-	  return ivec3(-1,-1,-1);
-	maxs.z += deltas.z;
-      }
-    } else {
-      if (maxs.y < maxs.z) {
-	curVoxel.y += steps.y;
-	laststep = ivec3(0, steps.y, 0);
-	if (curVoxel.y < 0 || curVoxel.y >= nvoxels.y)
-	  return ivec3(-1,-1,-1);
-	maxs.y += deltas.y;
-      } else {
-	curVoxel.z += steps.z;
-	laststep = ivec3(0, 0, steps.z);
-	if (curVoxel.z < 0 || curVoxel.z >= nvoxels.z)
-	  return ivec3(-1,-1,-1);
-	maxs.z += deltas.z;
-      }
-    }
+    i++;
   }
-  return ivec3(-1, -1, -1);
 }
 
 float intersection(vec3 pos, vec3 dir) {
@@ -224,45 +181,12 @@ void main() {
   uint vloc;
   ivec3 laststep;
   ivec3 voxel = isoraymarch(camerapos, vloc, laststep);
-  //ivec3 voxel = raymarch(camerapos, cameradir, vloc, laststep);
   if (voxel.x < 0) {
     color = vec3(.2, .2, .4);
     return;
   }
 
-  int triesleft = 5; // Don't block for too long.
-
-  //triesleft = 0;
-
-  vec3 lighting = vec3(0,0,0);
-
-  if (triesleft > 0) {
-    // We might not use this if we don't get the lock, but generating it
-    // is cheap enough that's it worth it for faster convergence.
-    ivec3 lightpos = voxel - laststep;
-    vec3 norm = -vec3(laststep);
-    vec3 side = vec3(norm.y, norm.z, norm.x);
-    vec3 lightdir = normalize(hem_rand(norm, side, vec3(voxel.x, pos.x, pos.y)));
-    vec3 lightposabs = corner + (dim / vec3(nvoxels)) * (vec3(lightpos) + .5);
-
-    ivec3 nextlaststep;
-    uint nextvloc;
-    voxel = raymarch(lightposabs, lightdir, nextvloc, nextlaststep);
-    if (voxel.x >= 0) {
-      voxel_data hitvox = vdata[nextvloc];
-      vec3 hit_color = vd_color(hitvox);
-      vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
-				  hitvox.illum_g,
-				  hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
-      float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
-      float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
-      vec3 direct_lighting = hit_color * hit_emit;
-      vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
-      lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
-    } else {
-      //lighting = vec3(1,1,1) * dot(lightdir, normalize(vec3(1, .2, -.3)));
-    }
-  }
+  int triesleft = 1; // Don't block for too long.
 
   // Lock vdata for our voxel.
   uint locked = 0;
@@ -274,6 +198,25 @@ void main() {
       locked = 1;
     if (locked == 0) {
       // Begin locked region.
+
+      // We might not use this if we don't get the lock, but generating it
+      // is cheap enough that's it worth it for faster convergence.
+      ivec3 lightpos = voxel - laststep;
+      uint nextvloc;
+      vec3 lighting = vec3(0,0,0);
+      if (raymarch(lightpos, -laststep, nextvloc)) {
+	voxel_data hitvox = vdata[nextvloc];
+	vec3 hit_color = vd_color(hitvox);
+	vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
+				    hitvox.illum_g,
+				    hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
+	float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
+	float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
+	vec3 direct_lighting = hit_color * hit_emit;
+	vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
+	lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
+      }
+
 
       // TODO: Remove magic numbers.
       int maxsample = 5000;

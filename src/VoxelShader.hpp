@@ -2,6 +2,7 @@
 #include <vector>
 #include <GL/glew.h>
 #include <GL/gl.h>
+#include <glm/glm.hpp>
 
 #include "VoxelData.h"
 
@@ -70,4 +71,6 @@ public:
   virtual ~VoxelShader();
 
   void draw(int w, int h);
+private:
+  std::vector<glm::ivec3> makeray(int maxlen, glm::vec3 *dir);
 };
