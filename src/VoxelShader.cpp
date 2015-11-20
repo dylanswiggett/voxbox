@@ -176,12 +176,12 @@ void VoxelShader::draw(int w, int h)
 
 std::vector<glm::ivec3> VoxelShader::makeray(int maxlen, glm::vec3 *dir_out)
 {
-  // Sample direction on a sphere.
+  // Sample direction on an eigth sphere.
   double r1 = 1.0 - 2.0 * ((float)rand() / RAND_MAX);
   double r2 = (float)rand() / RAND_MAX;
   double r = glm::sqrt(1.0 - r1 * r1);
   double phi = 2 * 3.14159 * r2;
-  glm::vec3 dir(r1, cos(phi) * r, sin(phi) * r);
+  glm::vec3 dir(abs(r1), abs(cos(phi) * r), abs(sin(phi) * r));
   *dir_out = dir;
   //cout << dir.x << ", " << dir.y << ", " << dir.z << endl;
 

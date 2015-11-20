@@ -109,15 +109,25 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
 bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
   int i = 0;
   ivec3 scale = ivec3(1,1,1);
-  int r1 = 1 - 2 * int(round(rand(vec2(pos.x * pos.y, time))));
-  int r2 = 1 - 2 * int(round(rand(vec2(pos.y * pos.z, time))));
-  int r3 = 1 - 2 * int(round(rand(vec2(pos.z * pos.x, time))));
-  scale *= ivec3(r1, r2, r3);
-  if (dot(norm, raydir) < 0)
-    scale += -2 * abs(norm);
-  while (true) {
-    ivec3 offpos = pos + scale * ray[i];
+  int r1 = 1 - 2 * int(round(rand(vec2(pos.x & pos.y, time))));
+  int r2 = 1 - 2 * int(round(rand(vec2(pos.y & pos.z, time))));
 
+  if (norm.x != 0) {
+    scale = ivec3(norm.x, r1, r2);
+  } else if (norm.y != 0) {
+    scale = ivec3(r1, norm.y, r2);
+  } else {
+    scale = ivec3(r1, r2, norm.z);
+  }
+
+  while (true) {
+    ivec3 offpos = pos + ray[i] * scale;
+
+    /*
+    ivec3 steps = ivec3(step(ivec3(0,0,0), offpos) - step(nvoxels, offpos));
+    if (steps.x + steps.y + steps.z != 3)
+      return false;
+    */
     if (offpos.x < 0 || offpos.x >= nvoxels.x ||
 	offpos.y < 0 || offpos.y >= nvoxels.y ||
 	offpos.z < 0 || offpos.z >= nvoxels.z)
@@ -212,7 +222,7 @@ void main() {
       vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
       lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
     } else {
-      lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
+      //lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
     }
 
 
