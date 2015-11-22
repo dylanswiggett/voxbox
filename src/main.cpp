@@ -85,6 +85,11 @@ int main(int argc, char** argv)
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 200, 200, 200);
   
   running = true;
+  float xoff = 0;
+  float yoff = 0;
+  float xsp = 0;
+  float ysp = 0;
+  float speed = .3;
   // Main event/draw loop.
   while (running) {
     while (window.pollEvent(event)) {
@@ -92,14 +97,30 @@ int main(int argc, char** argv)
       case sf::Event::Closed:
 	running = false;
 	break;
+      case sf::Event::KeyPressed:
+	if (event.key.code == sf::Keyboard::Right) xsp = speed;
+	if (event.key.code == sf::Keyboard::Left) xsp = -speed;
+	if (event.key.code == sf::Keyboard::Up) ysp = speed;
+	if (event.key.code == sf::Keyboard::Down) ysp = -speed;
+	break;
+      case sf::Event::KeyReleased:
+	if (event.key.code == sf::Keyboard::Right) xsp = 0;
+	if (event.key.code == sf::Keyboard::Left) xsp = 0;
+	if (event.key.code == sf::Keyboard::Up) ysp = 0;
+	if (event.key.code == sf::Keyboard::Down) ysp = 0;
+	break;
       default:
 	break;
       }
     }
 
+    xoff += ysp - xsp;
+    yoff += ysp + xsp;
+    //yoff += ysp;
+
     // TODO: Run routine draw here.
     sf::Vector2u wsize = window.getSize();
-    vs->draw(wsize.x, wsize.y);
+    vs->draw(wsize.x, wsize.y, xoff, yoff);
 
     window.display();
   }

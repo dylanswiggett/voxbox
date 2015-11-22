@@ -128,7 +128,7 @@ VoxelShader::~VoxelShader()
   delete[] voxels_;
 }
 
-void VoxelShader::draw(int w, int h)
+void VoxelShader::draw(int w, int h, float xoff, float yoff)
 {
   GLuint loc;
   glUseProgram(prog_);
@@ -142,6 +142,8 @@ void VoxelShader::draw(int w, int h)
   glUniform3f(loc, w_, h_, d_);
   loc = glGetUniformLocation(prog_, "nvoxels");
   glUniform3i(loc, nx_, ny_, nz_);
+  loc = glGetUniformLocation(prog_, "viewoff");
+  glUniform2f(loc, xoff, yoff);
 
   loc = glGetUniformLocation(prog_, "time");
   glUniform1i(loc, t++);

@@ -25,6 +25,7 @@ vec3 vd_color(struct voxel_data vd) {
 
 uniform usampler3D voxels;
 uniform ivec2 wsize;
+uniform vec2 viewoff;
 uniform vec3 corner, dim;
 uniform ivec3 nvoxels;
 uniform int time;
@@ -109,8 +110,8 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
 bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
   int i = 0;
   ivec3 scale = ivec3(1,1,1);
-  int r1 = 1 - 2 * int(round(rand(vec2(pos.x & pos.y, time))));
-  int r2 = 1 - 2 * int(round(rand(vec2(pos.y & pos.z, time))));
+  int r1 = 1 - 2 * int(2 * rand(vec2(pos.x & pos.y, time)));
+  int r2 = 1 - 2 * int(2 * rand(vec2(pos.y & pos.z, time)));
 
   if (norm.x != 0) {
     scale = ivec3(norm.x, r1, r2);
@@ -186,7 +187,7 @@ void main() {
     return;
   }
 
-  camerapos += cameradir * t;
+  camerapos += cameradir * t + vec3(viewoff.x, 0, viewoff.y);
 
   uint vloc;
   ivec3 laststep;
