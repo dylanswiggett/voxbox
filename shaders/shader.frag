@@ -43,7 +43,7 @@ vec3 c1, c2;
 int voxelAt(ivec3 pos, out uint vloc) {
   if (pos.y < 0 || pos.y >= nvoxels.y)
     return -1;
-
+  
   pos.x %= nvoxels.x;
   pos.z %= nvoxels.z;
   /*
@@ -65,58 +65,70 @@ float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-# define MARCHPART(val, v)				\
-  stat = voxelAt(curVoxel, vloc);			\
-  if (stat == 1) {					\
-    laststep = v;					\
-    return curVoxel;					\
-  } else if (stat == -1) return ivec3(-1, -1, -1);	\
-  curVoxel.val -= 1;
-
-# define MARCH(s1, v1, s2, v2, s3, v3)					\
-  ivec3 march##s1##s2##s3(ivec3 curVoxel, out uint vloc, out ivec3 laststep) { \
-    int stat;								\
-    while (true) {							\
-      MARCHPART(s1, v3);						\
-      MARCHPART(s2, v1);						\
-      MARCHPART(s3, v2);						\
-    }									\
-  }
-
-MARCH(z, ivec3(0,0,-1), y, ivec3(0,-1,0), x, ivec3(-1,0,0));
-MARCH(y, ivec3(0,-1,0), z, ivec3(0,0,-1), x, ivec3(-1,0,0));
-MARCH(y, ivec3(0,-1,0), x, ivec3(-1,0,0), z, ivec3(0,0,-1));
-MARCH(z, ivec3(0,0,-1), x, ivec3(-1,0,0), y, ivec3(0,-1,0));
-MARCH(x, ivec3(-1,0,0), z, ivec3(0,0,-1), y, ivec3(0,-1,0));
-MARCH(x, ivec3(-1,0,0), y, ivec3(0,-1,0), z, ivec3(0,0,-1));
-
 ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
   vec3 voxelScale = (dim - corner) / nvoxels;
   vec3 offset = pos - corner;
   ivec3 curVoxel = ivec3(floor(offset / voxelScale));
   vec3 curVoxelOffset = offset - voxelScale * curVoxel;
-    
-  int stat;
-  if (curVoxelOffset.x > curVoxelOffset.y)
-    if (curVoxelOffset.x > curVoxelOffset.z) {
-      if (curVoxelOffset.y > curVoxelOffset.z) { // z, y, x
-	return marchzyx(curVoxel, vloc, laststep);
+  
+  ivec3 stepx = ivec3(-1,0,0);
+  ivec3 stepy = ivec3(0,-1,0);
+  ivec3 stepz = ivec3(0,0,-1);
+  ivec3 step1, step2, step3;
+  
+  float x = curVoxelOffset.x;
+  float y = curVoxelOffset.y;
+  float z = curVoxelOffset.z;
+  
+  if (x > y)
+    if (x > z) {
+      if (y > z) { // z, y, x
+	step1 = stepz; step2 = stepy; step3 = stepx;
       } else { // y, z, x
-	return marchyzx(curVoxel, vloc, laststep);
+	step1 = stepy; step2 = stepz; step3 = stepx;
       }
     } else { // y, x, z
-      return marchyxz(curVoxel, vloc, laststep);
+      step1 = stepy; step2 = stepx; step3 = stepz;
     }
   else
-    if (curVoxelOffset.y > curVoxelOffset.z) {
-      if (curVoxelOffset.x > curVoxelOffset.z) { // z, x, y
-	return marchzxy(curVoxel, vloc, laststep);
+    if (y > z) {
+      if (x > z) { // z, x, y
+	step1 = stepz; step2 = stepx; step3 = stepy;
       } else { // x, z, y
-	return marchxzy(curVoxel, vloc, laststep);
+	step1 = stepx; step2 = stepz; step3 = stepy;
       }
     } else { // x, y, z
-      return marchxyz(curVoxel, vloc, laststep);
+      step1 = stepx; step2 = stepy; step3 = stepz;
     }
+
+  int stat;
+  while (true) {
+    stat = voxelAt(curVoxel, vloc);
+    if (stat == 1) {
+      laststep = step3;
+      return curVoxel;
+    } else if (stat == -1)
+      break;
+    
+    curVoxel += step1;
+    stat = voxelAt(curVoxel, vloc);
+    if (stat == 1) {
+      laststep = step1;
+      return curVoxel;
+    } else if (stat == -1)
+      break;
+    
+    curVoxel += step2;
+    stat = voxelAt(curVoxel, vloc);
+    if (stat == 1) {
+      laststep = step1;
+      return curVoxel;
+    } else if (stat == -1)
+      break;
+
+    curVoxel += step3;
+  }
+  return ivec3(-1,-1,-1);
 }
 
 bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
@@ -229,7 +241,7 @@ void main() {
     color = vec3(.1, .1, .2);
     return;
   }
-  camerapos += cameradir * (t + .3) + vec3(viewoff.x, 0, viewoff.y);
+  camerapos += cameradir * (t + .01) + vec3(viewoff.x, 0, viewoff.y);
 
   uint vloc;
   ivec3 laststep;
@@ -239,8 +251,8 @@ void main() {
     return;
   }
 
-  /*
-  if (vdata[vloc].lock != time && atomicExchange(vdata[vloc].lock, time) != time) {
+  int check = time;
+  if (vdata[vloc].lock != check && atomicExchange(vdata[vloc].lock, check) != check) {
     // Begin locked region.
     process_voxel(vdata[vloc], laststep, voxel);
     // End locked region.
@@ -252,7 +264,5 @@ void main() {
      vec3(vdata[vloc].illum_r, vdata[vloc].illum_g, vdata[vloc].illum_b) /
      (10.0 * float(vdata[vloc].numrays)));
   color = clamp(color, 0, 1);
-  */
-  color = vd_color(vdata[vloc]);
   return;
 }
