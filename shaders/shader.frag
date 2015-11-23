@@ -79,7 +79,7 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
   float x = curVoxelOffset.x;
   float y = curVoxelOffset.y;
   float z = curVoxelOffset.z;
-  
+
   if (x > y)
     if (x > z) {
       if (y > z) { // z, y, x
@@ -101,8 +101,8 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
       step1 = stepx; step2 = stepy; step3 = stepz;
     }
 
-  int stat;
-  while (true) {
+  int stat = 0;
+  while (stat == 0) {
     stat = voxelAt(curVoxel, vloc);
     if (stat == 1) {
       laststep = step3;
@@ -252,7 +252,7 @@ void main() {
   }
 
   int check = time;
-  if (vdata[vloc].lock != check && atomicExchange(vdata[vloc].lock, check) != check) {
+  if (atomicExchange(vdata[vloc].lock, check) != check) {
     // Begin locked region.
     process_voxel(vdata[vloc], laststep, voxel);
     // End locked region.
@@ -264,5 +264,6 @@ void main() {
      vec3(vdata[vloc].illum_r, vdata[vloc].illum_g, vdata[vloc].illum_b) /
      (10.0 * float(vdata[vloc].numrays)));
   color = clamp(color, 0, 1);
+
   return;
 }
