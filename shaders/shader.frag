@@ -41,15 +41,16 @@ vec3 c1, c2;
 //     0 for no-hit
 //    -1 for outside
 int voxelAt(ivec3 pos, out uint vloc) {
-  ivec2 voxoff = ivec2(viewoff * nvoxels.xz / dim.xz);
-  if (pos.x < voxoff.x || pos.z < voxoff.y)
+  if (pos.y < 0 || pos.y >= nvoxels.y)
     return -1;
   
   pos.x %= nvoxels.x;
   pos.z %= nvoxels.z;
+  /*
   vec3 s = step(vec3(0,0,0), pos) - step(nvoxels, pos);
   if (s.x * s.y * s.z == 0)
     return -1;
+  */
 
   vloc = texelFetch(voxels, pos, 0).r;
   if (vloc != 0) {
@@ -250,8 +251,8 @@ void main() {
     return;
   }
 
-  int check = time % 10;
-  if (atomicExchange(vdata[vloc].lock, check) != check) {
+  int check = time;
+  if (vdata[vloc].lock != check && atomicExchange(vdata[vloc].lock, check) != check) {
     // Begin locked region.
     process_voxel(vdata[vloc], laststep, voxel);
     // End locked region.
