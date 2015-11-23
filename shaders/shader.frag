@@ -41,10 +41,23 @@ vec3 c1, c2;
 //     0 for no-hit
 //    -1 for outside
 int voxelAt(ivec3 pos, out uint vloc) {
-  if (pos.x < 0 || pos.x >= nvoxels.x ||
-      pos.y < 0 || pos.y >= nvoxels.y ||
-      pos.z < 0 || pos.z >= nvoxels.z)
+  /*
+  if (pos.y < -1 || pos.y > nvoxels.y)
     return -1;
+  else if (pos.y == 0 || pos.y == nvoxels.y)
+    return 0;
+  pos.x %= nvoxels.x;
+  pos.z %= nvoxels.z;
+  */
+  vec3 s = step(vec3(0,0,0), pos) - step(nvoxels, pos);
+  if (s.x * s.y * s.z == 0)
+    return -1;
+  /*
+  if (pos.x < 0 || pos.y >= nvoxels.x ||
+      pos.y < 0 || pos.y >= nvoxels.y ||
+      pos.z < 0 || pos.y >= nvoxels.z)
+    return -1;
+  */
 
   vloc = texelFetch(voxels, pos, 0).r;
   if (vloc != 0) {
@@ -95,34 +108,32 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
       step1 = stepx; step2 = stepy; step3 = stepz;
     }
 
+  int stat;
   while (true) {
-    vloc = texelFetch(voxels, curVoxel, 0).r;
-    if (vloc != 0) {
-      vloc -= 1; laststep = step3;
+    stat = voxelAt(curVoxel, vloc);
+    if (stat == 1) {
+      laststep = step3;
       return curVoxel;
-    }
+    } else if (stat == -1)
+      break;
     
     curVoxel += step1;
-    if (dot(curVoxel, step1) > 0)
-      break;
-    vloc = texelFetch(voxels, curVoxel, 0).r;
-    if (vloc != 0) {
-      vloc -= 1; laststep = step1;
+    stat = voxelAt(curVoxel, vloc);
+    if (stat == 1) {
+      laststep = step1;
       return curVoxel;
-    }
+    } else if (stat == -1)
+      break;
     
     curVoxel += step2;
-    if (dot(curVoxel, step2) > 0)
-      break;
-    vloc = texelFetch(voxels, curVoxel, 0).r;
-    if (vloc != 0) {
-      vloc -= 1; laststep = step2;
+    stat = voxelAt(curVoxel, vloc);
+    if (stat == 1) {
+      laststep = step1;
       return curVoxel;
-    }
-    
-    curVoxel += step3;
-    if (dot(curVoxel, step3) > 0)
+    } else if (stat == -1)
       break;
+
+    curVoxel += step3;
   }
   return ivec3(-1,-1,-1);
 }
@@ -237,7 +248,7 @@ void main() {
     color = vec3(.1, .1, .2);
     return;
   }
-  camerapos += cameradir * t + vec3(viewoff.x, 0, viewoff.y);
+  camerapos += cameradir * (t + .01) + vec3(viewoff.x, 0, viewoff.y);
 
   uint vloc;
   ivec3 laststep;
