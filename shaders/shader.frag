@@ -36,6 +36,25 @@ uniform vec3 raydir;
 
 vec3 c1, c2;
 
+// Returns:
+//     1 for voxel
+//     0 for no-hit
+//    -1 for outside
+int voxelAt(ivec3 pos, out uint vloc) {
+  if (pos.x < 0 || pos.x >= nvoxels.x ||
+      pos.y < 0 || pos.y >= nvoxels.y ||
+      pos.z < 0 || pos.z >= nvoxels.z)
+    return -1;
+
+  vloc = texelFetch(voxels, pos, 0).r;
+  if (vloc != 0) {
+    vloc -= 1;
+    return 1;
+  }
+
+  return 0;
+}
+
 float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
@@ -127,22 +146,11 @@ bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
   while (true) {
     ivec3 offpos = pos + ray[i] * scale;
 
-    /*
-    ivec3 steps = ivec3(step(ivec3(0,0,0), offpos) - step(nvoxels, offpos));
-    if (steps.x + steps.y + steps.z != 3)
+    int stat = voxelAt(offpos, vloc);
+    if (stat == -1)
       return false;
-    */
-    if (offpos.x < 0 || offpos.x >= nvoxels.x ||
-	offpos.y < 0 || offpos.y >= nvoxels.y ||
-	offpos.z < 0 || offpos.z >= nvoxels.z)
-      return false;
-
-    vloc = texelFetch(voxels, offpos, 0).r;
-    if (vloc != 0) {
-      vloc -= 1;
+    else if (stat == 1)
       return true;
-    }
-
     i++;
   }
 }
@@ -163,33 +171,72 @@ float intersection(vec3 pos, vec3 dir) {
   }
 }
 
+void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
+  // Requires a lock be held on vox.
+  
+  // We might not use this if we don't get the lock, but generating it
+  // is cheap enough that's it worth it for faster convergence.
+  ivec3 lightpos = voxel - laststep;
+  uint nextvloc;
+  vec3 lighting = vec3(0,0,0);
+  if (raymarch(lightpos, -laststep, nextvloc)) {
+    voxel_data hitvox = vdata[nextvloc];
+    vec3 hit_color = vd_color(hitvox);
+    vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
+				hitvox.illum_g,
+				hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
+    float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
+    float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
+    vec3 direct_lighting = hit_color * hit_emit;
+    vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
+    lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
+  } else {
+    //lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
+  }
+
+
+  // TODO: Remove magic numbers.
+  int maxsample = 5000;
+  int minussample = 2000;
+  if (vox.numrays >= uint16_t(maxsample)) {
+    float downscale = float(maxsample - minussample) / maxsample;
+    vox.numrays -= uint16_t(minussample);
+    vox.illum_r = uint16_t(float(vox.illum_r) * downscale);
+    vox.illum_g = uint16_t(float(vox.illum_g) * downscale);
+    vox.illum_b = uint16_t(float(vox.illum_b) * downscale);
+  } else {
+    vox.numrays++;
+    vox.illum_r += uint16_t(10 * lighting.r);
+    vox.illum_g += uint16_t(10 * lighting.g);
+    vox.illum_b += uint16_t(10 * lighting.b);
+    if (vox.illum_r > vox.numrays * uint16_t(10) ||
+	vox.illum_g > vox.numrays * uint16_t(10) ||
+	vox.illum_b > vox.numrays * uint16_t(10)) {
+      float minscale = float(vox.numrays) * 10 /
+	max(float(vox.illum_r), max(float(vox.illum_g), float(vox.illum_b)));
+      vox.illum_r = uint16_t(float(vox.illum_r) * minscale);
+      vox.illum_g = uint16_t(float(vox.illum_g) * minscale);
+      vox.illum_b = uint16_t(float(vox.illum_b) * minscale);
+    }
+  }
+}
+
 void main() {
   float mindim = min(wsize.x, wsize.y);
   vec2 pos = (2 * (gl_FragCoord.xy - wsize / 2) / mindim);
   c1 = corner;
   c2 = corner + dim;
   
-  vec3 cameradir = -normalize(dim);
-  
+  vec3 cameradir = normalize(vec3(-1,-1,-1));
   vec3 right = normalize(cross(cameradir, vec3(0,1,0)));
   vec3 up = cross(right, cameradir);
-  // TODO: Figure out why 25 is a good parameter here...
   vec3 camerapos = corner + dim + (right * pos.x + up * pos.y) * length(dim) / 2;
-
-  float tscaled = float(time) / 100;
-  float s = sin(tscaled);
-  float c = cos (tscaled);
-  
-  // This line enables (crazy) perspective:
-  //cameradir = normalize(-dim + 20 * sin(float(time) / 10) * (right * pos.x + up * pos.y));
-  //cameradir = normalize(-dim + 10 * (right * pos.x + up * pos.y));
 
   float t = intersection(camerapos, cameradir);
   if (t == 0) {
     color = vec3(.1, .1, .2);
     return;
   }
-
   camerapos += cameradir * t + vec3(viewoff.x, 0, viewoff.y);
 
   uint vloc;
@@ -201,59 +248,13 @@ void main() {
   }
 
   int check = time % 10;
-
-  // Lock vdata for our voxel.
   if (atomicExchange(vdata[vloc].lock, check) != check) {
     // Begin locked region.
-
-    // We might not use this if we don't get the lock, but generating it
-    // is cheap enough that's it worth it for faster convergence.
-    ivec3 lightpos = voxel - laststep;
-    uint nextvloc;
-    vec3 lighting = vec3(0,0,0);
-    if (raymarch(lightpos, -laststep, nextvloc)) {
-      voxel_data hitvox = vdata[nextvloc];
-      vec3 hit_color = vd_color(hitvox);
-      vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
-				  hitvox.illum_g,
-				  hitvox.illum_b)) / (10.0 * float(hitvox.numrays));
-      float hit_emit = float(hitvox.emission) / 10; // Small lights can generate LOTS of light!
-      float hit_diffuse = float(hitvox.diffuse) / 255; // But reflecting cannot amplify.
-      vec3 direct_lighting = hit_color * hit_emit;
-      vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
-      lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
-    } else {
-      //lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
-    }
-
-
-    // TODO: Remove magic numbers.
-    int maxsample = 5000;
-    int minussample = 2000;
-    if (vdata[vloc].numrays >= uint16_t(maxsample)) {
-      float downscale = float(maxsample - minussample) / maxsample;
-      vdata[vloc].numrays -= uint16_t(minussample);
-      vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * downscale);
-      vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * downscale);
-      vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * downscale);
-    } else {
-      vdata[vloc].numrays++;
-      vdata[vloc].illum_r += uint16_t(10 * lighting.r);
-      vdata[vloc].illum_g += uint16_t(10 * lighting.g);
-      vdata[vloc].illum_b += uint16_t(10 * lighting.b);
-      if (vdata[vloc].illum_r > vdata[vloc].numrays * uint16_t(10) ||
-	  vdata[vloc].illum_g > vdata[vloc].numrays * uint16_t(10) ||
-	  vdata[vloc].illum_b > vdata[vloc].numrays * uint16_t(10)) {
-	float minscale = float(vdata[vloc].numrays) * 10 /
-	  max(float(vdata[vloc].illum_r), max(float(vdata[vloc].illum_g), float(vdata[vloc].illum_b)));
-	vdata[vloc].illum_r = uint16_t(float(vdata[vloc].illum_r) * minscale);
-	vdata[vloc].illum_g = uint16_t(float(vdata[vloc].illum_g) * minscale);
-	vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * minscale);
-      }
-    }
+    process_voxel(vdata[vloc], laststep, voxel);
+    // End locked region.
   }
 
-  // Ooooh, racey!
+  // Nice and racey
   color = vd_color(vdata[vloc]) *
     (vec3(1,1,1) * vdata[vloc].emission / 10 +
      vec3(vdata[vloc].illum_r, vdata[vloc].illum_g, vdata[vloc].illum_b) /
