@@ -29,6 +29,7 @@ uniform vec2 viewoff;
 uniform vec3 corner, dim;
 uniform ivec3 nvoxels;
 uniform int time;
+uniform int update;
 
 uniform ivec3 ray[400];
 uniform vec3 raydir;
@@ -199,7 +200,7 @@ void main() {
 
   // Lock vdata for our voxel.
   uint locked = 0;
-  if (vdata[vloc].flags != uint16_t(time % 10) && vdata[vloc].lock == 0)
+  if (update == 1 && vdata[vloc].flags != uint16_t(time % 10) && vdata[vloc].lock == 0)
     locked = atomicExchange(vdata[vloc].lock, 1);
   else
     locked = 1;

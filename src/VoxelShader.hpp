@@ -70,7 +70,7 @@ public:
 	      int nx, int ny, int nz); // Number of voxels in rendered region.
   virtual ~VoxelShader();
 
-  void draw(int w, int h, float xoff, float yoff);
+  void draw(int w, int h, float xoff, float yoff, bool perform_update);
 private:
   std::vector<glm::ivec3> makeray(int maxlen, glm::vec3 *dir);
 };

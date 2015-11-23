@@ -90,6 +90,7 @@ int main(int argc, char** argv)
   float xsp = 0;
   float ysp = 0;
   float speed = .3;
+  bool update = true;
   // Main event/draw loop.
   while (running) {
     while (window.pollEvent(event)) {
@@ -98,6 +99,8 @@ int main(int argc, char** argv)
 	running = false;
 	break;
       case sf::Event::KeyPressed:
+	if (event.key.code == sf::Keyboard::Q) running = false;
+	if (event.key.code == sf::Keyboard::Space) update = !update;
 	if (event.key.code == sf::Keyboard::Right) xsp = speed;
 	if (event.key.code == sf::Keyboard::Left) xsp = -speed;
 	if (event.key.code == sf::Keyboard::Up) ysp = speed;
@@ -116,11 +119,10 @@ int main(int argc, char** argv)
 
     xoff += ysp - xsp;
     yoff += ysp + xsp;
-    //yoff += ysp;
 
     // TODO: Run routine draw here.
     sf::Vector2u wsize = window.getSize();
-    vs->draw(wsize.x, wsize.y, xoff, yoff);
+    vs->draw(wsize.x, wsize.y, xoff, yoff, update);
 
     window.display();
   }
