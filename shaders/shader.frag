@@ -111,8 +111,10 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
 bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
   int i = 0;
   ivec3 scale = ivec3(1,1,1);
-  int r1 = 1 - 2 * int(2 * rand(vec2(pos.x & pos.y, time)));
-  int r2 = 1 - 2 * int(2 * rand(vec2(pos.y & pos.z, time)));
+  int r1 = 1;
+  if (rand(vec2(pos.x & pos.y ^ pos.z, time)) > .5) r1 = -1;
+  int r2 = 1;
+  if (rand(vec2(pos.x ^ pos.y * pos.z, time)) > .5) r2 = -1;
 
   if (norm.x != 0) {
     scale = ivec3(norm.x, r1, r2);
@@ -198,13 +200,10 @@ void main() {
     return;
   }
 
+  int check = time % 10;
+
   // Lock vdata for our voxel.
-  uint locked = 0;
-  if (update == 1 && vdata[vloc].flags != uint16_t(time % 10) && vdata[vloc].lock == 0)
-    locked = atomicExchange(vdata[vloc].lock, 1);
-  else
-    locked = 1;
-  if (locked == 0) {
+  if (atomicExchange(vdata[vloc].lock, check) != check) {
     // Begin locked region.
 
     // We might not use this if we don't get the lock, but generating it
@@ -252,14 +251,6 @@ void main() {
 	vdata[vloc].illum_b = uint16_t(float(vdata[vloc].illum_b) * minscale);
       }
     }
-
-    vdata[vloc].flags = uint16_t(time % 10);
-
-    // End locked region.
-    // memoryBarrier();
-    atomicExchange(vdata[vloc].lock, 0);
-  } else if (locked == 0) {
-    atomicExchange(vdata[vloc].lock, 0);
   }
 
   // Ooooh, racey!
