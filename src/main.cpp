@@ -64,9 +64,13 @@ int main(int argc, char** argv)
 
   CombineVoxelData d;
 
-  d.addVoxels(new BoxVoxelData(vec3(6,0,6), vec3(8, 3, 8), Voxel(vec3(.6, .6, 1), 0, 255)));
+  d.addVoxels(new BoxVoxelData(vec3(6,0,6), vec3(9, 3, 9), Voxel(vec3(.6, .6, 1), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(9,3,9), vec3(3, 3, 3), Voxel(vec3(1, 1, 1), 100, 0)));
-  d.addVoxels(new BoxVoxelData(vec3(9,6,9), vec3(3, 1, 3), Voxel(vec3(.3, .3, .3), 0, 255)));
+  d.addVoxels(new BoxVoxelData(vec3(6,3,6), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(vec3(6,3,12), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(vec3(12,3,6), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(vec3(12,3,12), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(vec3(8,6,8), vec3(5, 1, 5), Voxel(vec3(.3, .3, .3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(0,0,0), vec3(20, 1, 20), Voxel(vec3(1,.6,.6), 0, 255)));
   /*
   d.addVoxels(new BoxVoxelData(vec3(0,19,0), vec3(20, 1, 3), Voxel(vec3(1,1,1), 0, 255)));
@@ -89,8 +93,8 @@ int main(int argc, char** argv)
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 200, 200, 200);
   
   running = true;
-  float xoff = 0;
-  float yoff = 0;
+  float xoff = 10000;
+  float yoff = 10000;
   float xsp = 0;
   float ysp = 0;
   float speed = .3;
@@ -121,8 +125,8 @@ int main(int argc, char** argv)
       }
     }
 
-    xoff += ysp - xsp;
-    yoff += ysp + xsp;
+    xoff -= ysp - xsp;
+    yoff -= ysp + xsp;
 
     // TODO: Run routine draw here.
     sf::Vector2u wsize = window.getSize();

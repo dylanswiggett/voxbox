@@ -131,32 +131,26 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
   return ivec3(-1,-1,-1);
 }
 
-bool raymarch(ivec3 pos, ivec3 norm, out uint vloc) {
+bool raymarch(ivec3 pos, ivec3 norm, out uint vloc, out vec3 randdir) {
   int i = 0;
   ivec3 scale = ivec3(1,1,1);
-  int r1 = 1;
-  if (rand(vec2(pos.x & pos.y ^ pos.z, time)) > .5) r1 = -1;
-  int r2 = 1;
-  if (rand(vec2(pos.x ^ pos.y * pos.z, time)) > .5) r2 = -1;
+  int r1 = 1 - 2 * int(2 * (rand(vec2(pos.x ^ pos.y, time ^ pos.z))));
+  int r2 = 1 - 2 * int(2 * (rand(vec2(pos.x ^ pos.z, time ^ pos.y))));
+  int r3 = 1 - 2 * int(2 * (rand(vec2(pos.y ^ pos.z, time ^ pos.x))));
 
-  if (norm.x != 0) {
-    scale = ivec3(norm.x, r1, r2);
-  } else if (norm.y != 0) {
-    scale = ivec3(r1, norm.y, r2);
-  } else {
-    scale = ivec3(r1, r2, norm.z);
+  scale = norm + ivec3(r1, r2, r3) * (ivec3(1,1,1)-abs(norm));
+  randdir = raydir * scale;
+  
+  int stat;
+  int iter = 0;
+  while (iter++ < 1000 && stat == 0) {
+    ivec3 offpos = pos + ray[i++] * scale;
+    stat = voxelAt(offpos, vloc);
   }
-
-  while (true) {
-    ivec3 offpos = pos + ray[i] * scale;
-
-    int stat = voxelAt(offpos, vloc);
-    if (stat == -1)
-      return false;
-    else if (stat == 1)
-      return true;
-    i++;
-  }
+  if (stat == -1)
+    return false;
+  else if (stat == 1)
+    return true;
 }
 
 float intersection(vec3 pos, vec3 dir) {
@@ -168,11 +162,7 @@ float intersection(vec3 pos, vec3 dir) {
   vec3 tmaxs = max(t1, t2);
   float tmin = max(tmins.x, max(tmins.y, tmins.z));
   float tmax = min(tmaxs.x, min(tmaxs.y, tmaxs.z));
-  if (tmax >= tmin) {
-    return tmin;
-  } else {
-    return 0.0;
-  }
+  return tmin * step(tmin, tmax);
 }
 
 void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
@@ -182,8 +172,9 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
   // is cheap enough that's it worth it for faster convergence.
   ivec3 lightpos = voxel - laststep;
   uint nextvloc;
+  vec3 randdir;
   vec3 lighting = vec3(0,0,0);
-  if (raymarch(lightpos, -laststep, nextvloc)) {
+  if (raymarch(lightpos, -laststep, nextvloc, randdir)) {
     voxel_data hitvox = vdata[nextvloc];
     vec3 hit_color = vd_color(hitvox);
     vec3 hit_illum = vec3(ivec3(hitvox.illum_r,
@@ -195,7 +186,7 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
     vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
     lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
   } else {
-    //lighting = vec3(1,1,1) * dot(raydir, vec3(1, .2, -.3));
+    lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
   }
 
 
