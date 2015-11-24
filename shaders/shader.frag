@@ -178,7 +178,7 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
     vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
     lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
   } else {
-    //lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
+    lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
   }
 
 
