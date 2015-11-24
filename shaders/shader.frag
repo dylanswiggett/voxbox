@@ -71,10 +71,9 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
   ivec3 curVoxel = ivec3(floor(offset / voxelScale));
   vec3 curVoxelOffset = offset - voxelScale * curVoxel;
   
-  ivec3 stepx = ivec3(-1,0,0);
-  ivec3 stepy = ivec3(0,-1,0);
-  ivec3 stepz = ivec3(0,0,-1);
-  ivec3 step1, step2, step3;
+  int rot1, rot2;
+
+  ivec3 s;
   
   float x = curVoxelOffset.x;
   float y = curVoxelOffset.y;
@@ -83,50 +82,43 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
   if (x > y)
     if (x > z) {
       if (y > z) { // z, y, x
-	step1 = stepz; step2 = stepy; step3 = stepx;
+	s = ivec3(-1,0,0);
+	rot1 = 0; rot2 = 1;
       } else { // y, z, x
-	step1 = stepy; step2 = stepz; step3 = stepx;
+	s = ivec3(-1,0,0);
+	rot1 = 1; rot2 = 0;
       }
     } else { // y, x, z
-      step1 = stepy; step2 = stepx; step3 = stepz;
+      s = ivec3(0,0,-1);
+      rot1 = 0; rot2 = 1;
     }
   else
     if (y > z) {
       if (x > z) { // z, x, y
-	step1 = stepz; step2 = stepx; step3 = stepy;
+	s = ivec3(0,-1,0);
+	rot1 = 1; rot2 = 0;
       } else { // x, z, y
-	step1 = stepx; step2 = stepz; step3 = stepy;
+	s = ivec3(0,-1,0);
+	rot1 = 0; rot2 = 1;
       }
     } else { // x, y, z
-      step1 = stepx; step2 = stepy; step3 = stepz;
+      s = ivec3(0,0,-1);
+      rot1 = 1; rot2 = 0;
     }
 
-  int stat = 0;
-  while (stat == 0) {
+  int stat = voxelAt(curVoxel, vloc);
+  laststep = s;
+  
+  int iters = min(curVoxel.x - int(viewoff.x / voxelScale.x),
+		  min(curVoxel.y, curVoxel.z - int(viewoff.y / voxelScale.y))) * 3;
+  while (iters-- >= 0 && stat == 0) {
+    s = s.zxy * rot1 + s.yzx * rot2;
+    curVoxel += s;
     stat = voxelAt(curVoxel, vloc);
-    if (stat == 1) {
-      laststep = step3;
-      return curVoxel;
-    } else if (stat == -1)
-      break;
-    
-    curVoxel += step1;
-    stat = voxelAt(curVoxel, vloc);
-    if (stat == 1) {
-      laststep = step1;
-      return curVoxel;
-    } else if (stat == -1)
-      break;
-    
-    curVoxel += step2;
-    stat = voxelAt(curVoxel, vloc);
-    if (stat == 1) {
-      laststep = step1;
-      return curVoxel;
-    } else if (stat == -1)
-      break;
-
-    curVoxel += step3;
+  }
+  if (stat == 1) {
+    laststep = s;
+    return curVoxel;
   }
   return ivec3(-1,-1,-1);
 }
@@ -186,13 +178,13 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
     vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
     lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
   } else {
-    lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
+    //lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
   }
 
 
   // TODO: Remove magic numbers.
-  int maxsample = 5000;
-  int minussample = 2000;
+  int maxsample = 500;
+  int minussample = 200;
   if (vox.numrays >= uint16_t(maxsample)) {
     float downscale = float(maxsample - minussample) / maxsample;
     vox.numrays -= uint16_t(minussample);
