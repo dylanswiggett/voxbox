@@ -32,6 +32,8 @@ uniform int time;
 uniform int update;
 
 uniform ivec3 ray[400];
+uniform isampler2D rays;
+uniform int raylen, numrays;
 uniform vec3 raydir;
 
 vec3 c1, c2;
@@ -108,10 +110,10 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
 
   int stat = voxelAt(curVoxel, vloc);
   laststep = s;
+
+  ivec3 off = ivec3(viewoff.x / voxelScale.x, 0, viewoff.y / voxelScale.y);
   
-  int iters = min(curVoxel.x - int(viewoff.x / voxelScale.x),
-		  min(curVoxel.y, curVoxel.z - int(viewoff.y / voxelScale.y))) * 3;
-  while (iters-- >= 0 && stat == 0) {
+  while (curVoxel - off == abs(curVoxel - off) && stat == 0) {
     s = s.zxy * rot1 + s.yzx * rot2;
     curVoxel += s;
     stat = voxelAt(curVoxel, vloc);
@@ -124,21 +126,18 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
 }
 
 bool raymarch(ivec3 pos, ivec3 norm, out uint vloc, out vec3 randdir) {
-  int i = 0;
-  ivec3 scale = ivec3(1,1,1);
-  int r1 = 1 - 2 * int(2 * (rand(vec2(pos.x ^ pos.y, time ^ pos.z))));
-  int r2 = 1 - 2 * int(2 * (rand(vec2(pos.x ^ pos.z, time ^ pos.y))));
-  int r3 = 1 - 2 * int(2 * (rand(vec2(pos.y ^ pos.z, time ^ pos.x))));
-
-  scale = norm + ivec3(r1, r2, r3) * (ivec3(1,1,1)-abs(norm));
-  randdir = raydir * scale;
-  
+  int r = int(numrays * rand(vec2(pos.x ^ pos.y, pos.y ^ pos.z)));
   int stat;
-  int iter = 0;
-  while (iter++ < 1000 && stat == 0) {
-    ivec3 offpos = pos + ray[i++] * scale;
+  int i = 0;
+  ivec3 off;
+  while (i < raylen && stat == 0) {
+    off = texelFetch(rays, ivec2(i, (time + r) % numrays), 0).rgb;
+    off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
+    ivec3 offpos = pos + off;
     stat = voxelAt(offpos, vloc);
+    i++;
   }
+  randdir = normalize(off);
   if (stat == -1)
     return false;
   else if (stat == 1)
@@ -183,8 +182,8 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
 
 
   // TODO: Remove magic numbers.
-  int maxsample = 500;
-  int minussample = 200;
+  int maxsample = 5000;
+  int minussample = 2000;
   if (vox.numrays >= uint16_t(maxsample)) {
     float downscale = float(maxsample - minussample) / maxsample;
     vox.numrays -= uint16_t(minussample);

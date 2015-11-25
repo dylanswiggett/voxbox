@@ -56,12 +56,14 @@ private:
   int nx_, ny_, nz_;
   GLuint prog_;
   GLuint vao_;
-  GLuint gl_voxel_tex_, gl_vdata_;
+  GLuint gl_voxel_tex_, gl_vdata_, gl_raydata_;
   GLuint vertex_buffer_, element_buffer_;
 
   GLuint *voxels_;
   vector<struct voxel_data> vdata_;
 
+  int numrays_;
+  
   int t;
 public:
   VoxelShader(VoxelData* data,
@@ -72,5 +74,6 @@ public:
 
   void draw(int w, int h, float xoff, float yoff, bool perform_update);
 private:
-  std::vector<glm::ivec3> makeray(int maxlen, glm::vec3 *dir);
+  std::vector<glm::ivec3> makeray(int maxlen, glm::vec3 dir);
+  std::vector<glm::ivec3> makerandomray(int maxlen, glm::vec3 *dir);
 };
