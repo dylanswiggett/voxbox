@@ -10,7 +10,6 @@ Opengl 4.3 or later.
 * Scenes larger than the box
 * Demand loading
 * Different colors/locks for each voxel side
-* Distance field
 
 ## Screenshots
 
