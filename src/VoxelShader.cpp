@@ -64,9 +64,10 @@ VoxelShader::VoxelShader(VoxelData* data,
 		       FRAGMENT_SHADER_PATH);
 
   int size = nx * ny * nz;
-  voxels_ = new GLuint[size];
+  voxels_ = new GLint[size];
   Voxel v;
   struct voxel_data vd;
+  vdata_.push_back(vd);
   float xscale = w / nx;
   float yscale = h / ny;
   float zscale = d / nz;
@@ -88,7 +89,7 @@ VoxelShader::VoxelShader(VoxelData* data,
 	  vd.flags = 0;
 	  vd.lock = 0;
 	  vdata_.push_back(vd);
-	  voxels_[pos] = vdata_.size();
+	  voxels_[pos] = vdata_.size() - 1;
 	} else {
 	  voxels_[pos] = 0;
 	}
@@ -142,9 +143,9 @@ VoxelShader::VoxelShader(VoxelData* data,
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI,
 	       nx, ny, nz, 0, GL_RED_INTEGER,
-	       GL_UNSIGNED_INT, 0);
+	       GL_INT, 0);
   glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx, ny, nz, GL_RED_INTEGER,
-		  GL_UNSIGNED_INT, voxels_);
+		  GL_INT, voxels_);
 
   glGenTextures(1, &gl_raydata_);
   glBindTexture(GL_TEXTURE_2D, gl_raydata_);

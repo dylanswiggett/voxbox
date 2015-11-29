@@ -59,7 +59,7 @@ private:
   GLuint gl_voxel_tex_, gl_vdata_, gl_raydata_;
   GLuint vertex_buffer_, element_buffer_;
 
-  GLuint *voxels_;
+  GLint *voxels_;
   vector<struct voxel_data> vdata_;
 
   int numrays_;

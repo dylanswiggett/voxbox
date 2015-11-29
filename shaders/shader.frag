@@ -23,7 +23,7 @@ vec3 vd_color(struct voxel_data vd) {
   return vec3(ivec3(vd.r,vd.g,vd.b)) / 255;
 }
 
-uniform usampler3D voxels;
+uniform isampler3D voxels;
 uniform ivec2 wsize;
 uniform vec2 viewoff;
 uniform vec3 corner, dim;
@@ -42,7 +42,7 @@ vec3 c1, c2;
 //     1 for voxel
 //     0 for no-hit
 //    -1 for outside
-int voxelAt(ivec3 pos, out uint vloc) {
+int voxelAt(ivec3 pos, out int vloc) {
   if (pos.y < 0 || pos.y >= nvoxels.y)
     return -1;
   
@@ -56,7 +56,6 @@ int voxelAt(ivec3 pos, out uint vloc) {
 
   vloc = texelFetch(voxels, pos, 0).r;
   if (vloc != 0) {
-    vloc -= 1;
     return 1;
   }
 
@@ -67,7 +66,7 @@ float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
+ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
   vec3 voxelScale = (dim - corner) / nvoxels;
   vec3 offset = pos - corner;
   ivec3 curVoxel = ivec3(floor(offset / voxelScale));
@@ -125,7 +124,7 @@ ivec3 isoraymarch(vec3 pos, out uint vloc, out ivec3 laststep) {
   return ivec3(-1,-1,-1);
 }
 
-bool raymarch(ivec3 pos, ivec3 norm, out uint vloc, out vec3 randdir) {
+bool raymarch(ivec3 pos, ivec3 norm, out int vloc, out vec3 randdir) {
   int r = int(numrays * rand(vec2(pos.x ^ pos.y, pos.y ^ pos.z)));
   int stat;
   int i = 0;
@@ -162,7 +161,7 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
   // We might not use this if we don't get the lock, but generating it
   // is cheap enough that's it worth it for faster convergence.
   ivec3 lightpos = voxel - laststep;
-  uint nextvloc;
+  int nextvloc;
   vec3 randdir;
   vec3 lighting = vec3(0,0,0);
   if (raymarch(lightpos, -laststep, nextvloc, randdir)) {
@@ -225,7 +224,7 @@ void main() {
   }
   camerapos += cameradir * (t + .01) + vec3(viewoff.x, 0, viewoff.y);
 
-  uint vloc;
+  int vloc;
   ivec3 laststep;
   ivec3 voxel = isoraymarch(camerapos, vloc, laststep);
   if (voxel.x < 0) {
