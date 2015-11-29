@@ -65,6 +65,7 @@ VoxelShader::VoxelShader(VoxelData* data,
 
   int size = nx * ny * nz;
   voxels_ = new GLint[size];
+  dists_  = new   int[size];
   Voxel v;
   struct voxel_data vd;
   vdata_.push_back(vd);
@@ -74,7 +75,8 @@ VoxelShader::VoxelShader(VoxelData* data,
   for (int xpos = 0; xpos < nx; xpos++) {
     for (int ypos = 0; ypos < ny; ypos++) {
       for (int zpos = 0; zpos < nz; zpos++) {
-	int pos = xpos * ny * nz + ypos * nz + zpos;
+	int pos = to_pos(glm::ivec3(xpos,ypos,zpos));
+	dists_[pos] = 1000;
 	if (data_->voxelAt(vec3(x + xscale * xpos,
 				y + yscale * ypos,
 				z + zscale * zpos), &v)) {
@@ -90,9 +92,23 @@ VoxelShader::VoxelShader(VoxelData* data,
 	  vd.lock = 0;
 	  vdata_.push_back(vd);
 	  voxels_[pos] = vdata_.size() - 1;
+	  voxel_dists_.push(voxel_dist(glm::ivec3(xpos,ypos,zpos), 0));
+	  dists_[pos] = 0;
 	} else {
 	  voxels_[pos] = 0;
 	}
+      }
+    }
+  }
+
+  solvedists();
+
+    for (int xpos = 0; xpos < nx; xpos++) {
+    for (int ypos = 0; ypos < ny; ypos++) {
+      for (int zpos = 0; zpos < nz; zpos++) {
+	int pos = to_pos(glm::ivec3(xpos,ypos,zpos));
+	if (voxels_[pos] == 0)
+	  voxels_[pos] = dists_[pos];
       }
     }
   }
@@ -238,6 +254,40 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   check_GLerror();
 
   glUseProgram(0);
+}
+
+int VoxelShader::to_pos(glm::ivec3 v) {
+  return v.x * ny_ * nz_ + v.y * nz_ + v.z;
+}
+
+void VoxelShader::updatedistpos(glm::ivec3 p, int newdist)
+{
+  if (p.x < 0 || p.y < 0 || p.z < 0 ||
+      p.x >= nx_ || p.y >= ny_ || p.z >= nz_)
+    return;
+  int pos = to_pos(p);
+  if (dists_[pos] <= newdist)
+    return;
+  dists_[pos] = newdist;
+  voxel_dists_.push(voxel_dist(p, newdist));
+}
+
+void VoxelShader::solvedists()
+{
+  int count = 0;
+  while (!voxel_dists_.empty()) {
+    count ++;
+    voxel_dist p = voxel_dists_.top();
+    voxel_dists_.pop();
+
+    updatedistpos(p.pos + glm::ivec3(1,0,0), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(-1,0,0), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(0,1,0), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(0,-1,0), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(0,0,1), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(0,0,-1), p.dist + 1);
+  }
+  std::cout << "Visited " << count << " voxels while finding dists." << std::endl;
 }
 
 std::vector<glm::ivec3> VoxelShader::makeray(int maxlen, glm::vec3 dir)
