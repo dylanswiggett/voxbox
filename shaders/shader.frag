@@ -120,6 +120,10 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
 
   int stat = voxelAt(curVoxel, vloc);
   laststep = steps[idx % 3];
+  if (stat == 1) {
+    vloc = 0;
+    return ivec3(-1,-1,-1);
+  }
 
   ivec3 off = ivec3(viewoff.x / voxelScale.x, 0, viewoff.y / voxelScale.y);
 
@@ -243,7 +247,10 @@ void main() {
   ivec3 laststep;
   ivec3 voxel = isoraymarch(camerapos, vloc, laststep);
   if (voxel.x < 0) {
-    color = vec3(.2, .2, .4);
+    if (vloc == 0)
+      color = vec3(.15, .15, .3);
+    else
+      color = vec3(.2, .2, .4);
     return;
   }
 
