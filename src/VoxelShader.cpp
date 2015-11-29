@@ -103,17 +103,17 @@ VoxelShader::VoxelShader(VoxelData* data,
 
   solvedists();
 
-    for (int xpos = 0; xpos < nx; xpos++) {
+  for (int xpos = 0; xpos < nx; xpos++) {
     for (int ypos = 0; ypos < ny; ypos++) {
       for (int zpos = 0; zpos < nz; zpos++) {
 	int pos = to_pos(glm::ivec3(xpos,ypos,zpos));
 	if (voxels_[pos] == 0)
-	  voxels_[pos] = dists_[pos];
+	  voxels_[pos] = -dists_[pos];
       }
     }
   }
 
-  std::cout << vdata_.size() << " voxels." << std::endl;
+  std::cout << vdata_.size() - 1 << " voxels." << std::endl;
   std::cout << "Each voxel uses " << sizeof(struct voxel_data) << " bytes." << std::endl;
   std::cout << "Max voxels in box: " << nx * ny * nz << std::endl;
   std::cout << "Total mem: " << sizeof(struct voxel_data) * vdata_.size()
@@ -157,7 +157,7 @@ VoxelShader::VoxelShader(VoxelData* data,
   glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexImage3D(GL_TEXTURE_3D, 0, GL_R32UI,
+  glTexImage3D(GL_TEXTURE_3D, 0, GL_R32I,
 	       nx, ny, nz, 0, GL_RED_INTEGER,
 	       GL_INT, 0);
   glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx, ny, nz, GL_RED_INTEGER,

@@ -55,10 +55,11 @@ int voxelAt(ivec3 pos, out int vloc) {
   */
 
   vloc = texelFetch(voxels, pos, 0).r;
-  if (vloc != 0) {
+  if (vloc > 0) {
     return 1;
   }
 
+  vloc = -vloc; // vloc is now the distance;
   return 0;
 }
 
@@ -79,6 +80,8 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
   float x = curVoxelOffset.x;
   float y = curVoxelOffset.y;
   float z = curVoxelOffset.z;
+
+  ivec3 steps[3];
 
   if (x > y)
     if (x > z) {
@@ -107,18 +110,28 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
       rot1 = 1; rot2 = 0;
     }
 
+  steps[0] = s;
+  s = s.zxy * rot1 + s.yzx * rot2;
+  steps[1] = s;
+  s = s.zxy * rot1 + s.yzx * rot2;
+  steps[2] = s;
+
+  int idx = 0;
+
   int stat = voxelAt(curVoxel, vloc);
-  laststep = s;
+  laststep = steps[idx % 3];
 
   ivec3 off = ivec3(viewoff.x / voxelScale.x, 0, viewoff.y / voxelScale.y);
-  
+
   while (curVoxel - off == abs(curVoxel - off) && stat == 0) {
-    s = s.zxy * rot1 + s.yzx * rot2;
-    curVoxel += s;
+    for (int i = 0; i < vloc; i++) {
+      idx++;
+      curVoxel += steps[idx % 3];
+    }
     stat = voxelAt(curVoxel, vloc);
   }
   if (stat == 1) {
-    laststep = s;
+    laststep = steps[idx % 3];
     return curVoxel;
   }
   return ivec3(-1,-1,-1);
@@ -129,15 +142,17 @@ bool raymarch(ivec3 pos, ivec3 norm, out int vloc, out vec3 randdir) {
   int stat;
   int i = 0;
   ivec3 off;
+  vloc = 1;
   while (i < raylen && stat == 0) {
     off = texelFetch(rays, ivec2(i, (time + r) % numrays), 0).rgb;
-    off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
+    // More realistic lighting, but at a perf hit.
+    //off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
     ivec3 offpos = pos + off;
+    i += vloc;
     stat = voxelAt(offpos, vloc);
-    i++;
   }
   randdir = normalize(off);
-  if (stat == -1)
+  if (stat == 0)
     return false;
   else if (stat == 1)
     return true;
@@ -181,8 +196,8 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
 
 
   // TODO: Remove magic numbers.
-  int maxsample = 5000;
-  int minussample = 2000;
+  int maxsample = 2000;
+  int minussample = 500;
   if (vox.numrays >= uint16_t(maxsample)) {
     float downscale = float(maxsample - minussample) / maxsample;
     vox.numrays -= uint16_t(minussample);
