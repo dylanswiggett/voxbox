@@ -76,7 +76,7 @@ private:
   vector<struct voxel_data> vdata_;
 
   int *dists_;
-  priority_queue<voxel_dist> voxel_dists_;
+  queue<voxel_dist> voxel_dists_;
 
   int numrays_;
   

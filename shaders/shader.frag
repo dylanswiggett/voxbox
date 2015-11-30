@@ -81,7 +81,7 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
   float y = curVoxelOffset.y;
   float z = curVoxelOffset.z;
 
-  ivec3 steps[3];
+  ivec3 steps[5];
 
   if (x > y)
     if (x > z) {
@@ -110,32 +110,32 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
       rot1 = 1; rot2 = 0;
     }
 
-  steps[0] = s;
+  steps[0] = steps[3] = s;
   s = s.zxy * rot1 + s.yzx * rot2;
-  steps[1] = s;
+  steps[1] = steps[4] = s;
   s = s.zxy * rot1 + s.yzx * rot2;
   steps[2] = s;
 
   int idx = 0;
 
   int stat = voxelAt(curVoxel, vloc);
-  laststep = steps[idx % 3];
+  laststep = steps[0];
   if (stat == 1) {
     vloc = 0;
     return ivec3(-1,-1,-1);
   }
 
+  idx = 1;
   ivec3 off = ivec3(viewoff.x / voxelScale.x, 0, viewoff.y / voxelScale.y);
 
   while (curVoxel - off == abs(curVoxel - off) && stat == 0) {
-    for (int i = 0; i < vloc; i++) {
-      idx++;
-      curVoxel += steps[idx % 3];
-    }
+    curVoxel += steps[idx] * ((vloc + 2) / 3) + steps[idx + 1] * ((vloc + 1) / 3) +
+      steps[idx + 2] * (vloc / 3);
+    idx = (idx + vloc) % 3;
     stat = voxelAt(curVoxel, vloc);
   }
   if (stat == 1) {
-    laststep = steps[idx % 3];
+    laststep = steps[idx + 2];
     return curVoxel;
   }
   return ivec3(-1,-1,-1);
@@ -150,7 +150,7 @@ bool raymarch(ivec3 pos, ivec3 norm, out int vloc, out vec3 randdir) {
   while (i < raylen && stat == 0) {
     off = texelFetch(rays, ivec2(i, (time + r) % numrays), 0).rgb;
     // More realistic lighting, but at a perf hit.
-    //off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
+    off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
     ivec3 offpos = pos + off;
     i += vloc;
     stat = voxelAt(offpos, vloc);

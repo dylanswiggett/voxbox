@@ -277,7 +277,7 @@ void VoxelShader::solvedists()
   int count = 0;
   while (!voxel_dists_.empty()) {
     count ++;
-    voxel_dist p = voxel_dists_.top();
+    voxel_dist p = voxel_dists_.front();
     voxel_dists_.pop();
 
     updatedistpos(p.pos + glm::ivec3(1,0,0), p.dist + 1);
