@@ -65,6 +65,7 @@ int main(int argc, char** argv)
 
   CombineVoxelData d;
 
+  /*
   srand(time(NULL));
   for (int i = 0; i < 10; i++) {
     float x = 20.0 * rand() / RAND_MAX;
@@ -78,8 +79,8 @@ int main(int argc, char** argv)
 
     d.addVoxels(new BoxVoxelData(vec3(x,y,z), vec3(xx,yy,zz), Voxel(vec3(.6,.6,.6), 0, 255)));
   }
+  */
 
-  /*
   d.addVoxels(new BoxVoxelData(vec3(6,0,6), vec3(9, 3, 9), Voxel(vec3(.6, .6, 1), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(4,0,4), vec3(13, 2, 13), Voxel(vec3(.6, .6, 1), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(9,3,9), vec3(3, 3, 3), Voxel(vec3(1, 1, 1), 100, 0)));
@@ -91,7 +92,7 @@ int main(int argc, char** argv)
   d.addVoxels(new BoxVoxelData(vec3(9,6,9), vec3(3, 2, 3), Voxel(vec3(.3, .3, .3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(10,6,10), vec3(1, 3, 1), Voxel(vec3(.3, .3, .3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(0,0,0), vec3(20, 1, 20), Voxel(vec3(1,.6,.6), 0, 255)));
-  */
+
   /*
   d.addVoxels(new BoxVoxelData(vec3(0,19,0), vec3(20, 1, 3), Voxel(vec3(1,1,1), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(0,0,0), vec3(1, 20, 20), Voxel(vec3(1,1,1), 0, 255)));
