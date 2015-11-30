@@ -262,9 +262,11 @@ int VoxelShader::to_pos(glm::ivec3 v) {
 
 void VoxelShader::updatedistpos(glm::ivec3 p, int newdist)
 {
-  if (p.x < 0 || p.y < 0 || p.z < 0 ||
-      p.x >= nx_ || p.y >= ny_ || p.z >= nz_)
-    return;
+  // Wrapping world.
+  p.x = (p.x + nx_) % nx_;
+  p.y = (p.y + ny_) % ny_;
+  p.z = (p.z + nz_) % nz_;
+  
   int pos = to_pos(p);
   if (dists_[pos] <= newdist)
     return;

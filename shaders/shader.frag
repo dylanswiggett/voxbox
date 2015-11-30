@@ -49,7 +49,7 @@ int voxelAt(ivec3 pos, out int vloc) {
   pos.x %= nvoxels.x;
   pos.z %= nvoxels.z;
   /*
-  vec3 s = step(vec3(0,0,0), pos) - step(nvoxels, pos);
+#include <time.h>  vec3 s = step(vec3(0,0,0), pos) - step(nvoxels, pos);
   if (s.x * s.y * s.z == 0)
     return -1;
   */
@@ -120,7 +120,7 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
 
   int stat = voxelAt(curVoxel, vloc);
   laststep = steps[0];
-  if (stat == 1) {
+  if (stat == 1) { // Special case for hitting voxel at edge of box (don't draw).
     vloc = 0;
     return ivec3(-1,-1,-1);
   }
@@ -129,15 +129,19 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
   ivec3 off = ivec3(viewoff.x / voxelScale.x, 0, viewoff.y / voxelScale.y);
 
   while (curVoxel - off == abs(curVoxel - off) && stat == 0) {
-    curVoxel += steps[idx] * ((vloc + 2) / 3) + steps[idx + 1] * ((vloc + 1) / 3) +
-      steps[idx + 2] * (vloc / 3);
+    curVoxel +=
+      steps[idx] * (vloc + 2) / 3 +
+      steps[idx + 1] * (vloc + 1) / 3 +
+      steps[idx + 2] * vloc / 3;
     idx = (idx + vloc) % 3;
+
     stat = voxelAt(curVoxel, vloc);
   }
-  if (stat == 1) {
+  if (curVoxel - off == abs(curVoxel - off) && stat == 1) {
     laststep = steps[idx + 2];
     return curVoxel;
   }
+  vloc = -1;
   return ivec3(-1,-1,-1);
 }
 
@@ -195,7 +199,11 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
     vec3 indirect_lighting = hit_color * hit_illum * hit_diffuse;
     lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
   } else {
-    lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
+    //lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
+    vec3 lightdir = vec3(1,.5,-1);
+    float light = dot(randdir, lightdir);
+    if (light > .5)
+      lighting = vec3(1,1,1) * light;
   }
 
 
@@ -246,7 +254,7 @@ void main() {
   int vloc;
   ivec3 laststep;
   ivec3 voxel = isoraymarch(camerapos, vloc, laststep);
-  if (voxel.x < 0) {
+  if (vloc <= 0) {
     if (vloc == 0)
       color = vec3(.15, .15, .3);
     else
@@ -266,7 +274,10 @@ void main() {
     (vec3(1,1,1) * vdata[vloc].emission / 10 +
      vec3(vdata[vloc].illum_r, vdata[vloc].illum_g, vdata[vloc].illum_b) /
      (10.0 * float(vdata[vloc].numrays)));
-  color = clamp(color, 0, 1);
+  float maxcomp = max(color.r, max(color.g, color.b));
+  if (maxcomp > 1)
+    color /= maxcomp;
+  //color = clamp(color, 0, 1);
 
   return;
 }
