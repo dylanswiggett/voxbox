@@ -59,6 +59,10 @@ int voxelAt(ivec3 pos, out int vloc) {
     return 1;
   }
 
+  // This is a defense against bugs while working on
+  // dynamic chunk loading, since I otherwise might
+  // frequently cause this shader to hang (which can
+  // totally cripply my system :( ).
   vloc = -min(vloc, -1); // vloc is now the distance;
   return 0;
 }

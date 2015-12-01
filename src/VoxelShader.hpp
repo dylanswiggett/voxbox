@@ -11,14 +11,16 @@
 #define FRAGMENT_SHADER_PATH "shaders/shader.frag"
 
 // Parameters for dynamic chunk swapping.
-#define CHUNK_DIM 0.5 // Chunk width/height as a multiplier of height.
+#define CHUNK_DIM 0.25 // Chunk width/height as a multiplier of height.
 #define VOXEL_ALLOC 1000 // Voxels allocated in groups of this size.
 #define MAX_FILL 1 // Maximum number of voxels as a multiplier of box size.
 #define BUFFER 2 // Number of chunks allocated on each side of the box.
 
 using namespace std;
 
-typedef int chunk_id;
+typedef glm::ivec2 chunk_id;
+
+#define NULL_CHUNK chunk_id(1000000,1000000) // Something stupid.
 
 struct voxel_data {
   uint r : 8;
@@ -63,7 +65,6 @@ private:
   GLuint vertex_buffer_, element_buffer_;
 
   GLint *voxels_;
-  chunk_id chunk_uid_counter;
   vector<chunk_id> vdata_allocs_;
   vector<struct voxel_data> vdata_;
 
@@ -83,7 +84,6 @@ public:
   void draw(int w, int h, float xoff, float yoff, bool perform_update);
 private:
   void populate_chunk(int x, int z, int voxx, int voxz);
-  chunk_id new_chunk();
   int alloc_vdata(chunk_id id);
   void delete_vdata(chunk_id id);
   

@@ -69,15 +69,14 @@ VoxelShader::VoxelShader(VoxelData* data,
     vdata_.push_back(vd);
   vdata_allocs_.reserve(vdata_.size() / VOXEL_ALLOC);
   for (int i = 0; i < vdata_.size(); i++)
-    vdata_allocs_.push_back(0);
+    vdata_allocs_.push_back(NULL_CHUNK);
   int size = nx * ny * nz;
   voxels_ = new GLint[size];
   dists_  = new   int[size];
 
-  populate_chunk(0, 0, 0, 0);
-  populate_chunk(1, 0, 1, 0);
-  populate_chunk(0, 1, 0, 1);
-  populate_chunk(1, 1, 1, 1);
+  for (int x = 0; x < 4; x++)
+    for (int y = 0; y < 4; y++)
+      populate_chunk(x,y,x,y);
 
   solvedists();
 
@@ -241,8 +240,8 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
   voxx *= nx_ * CHUNK_DIM;
   voxz *= nz_ * CHUNK_DIM;
   
-  chunk_id id = new_chunk();
-  std::cout << "Allocating chunk " << id << std::endl;
+  chunk_id id(x, z);
+  std::cout << "Allocating chunk at " << x << ", " << z << std::endl;
 
   Voxel v;
   voxel_data vd;
@@ -250,7 +249,7 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
   float yscale = h_ / ny_;
   float zscale = d_ / nz_;
   int alloc_left = 0;
-  int alloc_pos = 0;
+  int alloc_pos = -1;
   for (int xpos = 0; xpos < CHUNK_DIM * nx_; xpos++) {
     for (int ypos = 0; ypos < ny_; ypos++) {
       for (int zpos = 0; zpos < CHUNK_DIM * nz_; zpos++) {
@@ -270,6 +269,7 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 	  vd.flags = 0;
 	  vd.lock = 0;
 	  if (alloc_left == 0) {
+	    // TODO: glBufferSubData that shizstuff.
 	    alloc_pos = alloc_vdata(id);
 	    alloc_left = VOXEL_ALLOC;
 	    if (alloc_pos < 0) {
@@ -290,18 +290,12 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
       }
     }
   }
-
-}
-
-chunk_id VoxelShader::new_chunk()
-{
-  return ++chunk_uid_counter;
 }
 
 int VoxelShader::alloc_vdata(chunk_id id)
 {
   for (int i = 0; i < vdata_allocs_.size(); i++) {
-    if (vdata_allocs_[i] == 0) { // found free alloc
+    if (vdata_allocs_[i] == NULL_CHUNK) { // found free alloc
       vdata_allocs_[i] = id;
       return i * VOXEL_ALLOC; // return offset
     }
@@ -314,7 +308,7 @@ void VoxelShader::delete_vdata(chunk_id id)
 {
   for (int i = 0; i < vdata_allocs_.size(); i++) {
     if (vdata_allocs_[i] == id)
-      vdata_allocs_[i] = 0;
+      vdata_allocs_[i] = NULL_CHUNK;
   }
 }
 
