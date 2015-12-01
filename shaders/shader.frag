@@ -25,6 +25,9 @@ vec3 vd_color(struct voxel_data vd) {
 
 uniform isampler3D voxels;
 uniform ivec2 wsize;
+uniform ivec3 viewcorner;
+uniform ivec3 voxeloffset;
+uniform ivec3 totalvoxels;
 uniform vec2 viewoff;
 uniform vec3 corner, dim;
 uniform ivec3 nvoxels;

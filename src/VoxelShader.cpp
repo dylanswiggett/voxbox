@@ -45,6 +45,11 @@ VoxelShader::VoxelShader(VoxelData* data,
 {
   glEnable(GL_TEXTURE_3D);
   glEnable(GL_TEXTURE_2D);
+
+  // Initialize chunk map.
+  num_chunks_wide_ = 1 / CHUNK_DIM + 2 * BUFFER;
+  for (int i = 0; i < num_chunks_wide_ * num_chunks_wide_; i++)
+    chunk_contents_.push_back(NULL_CHUNK);
   
   glGenVertexArrays(1, &vao_);
   glBindVertexArray(vao_);
@@ -57,13 +62,12 @@ VoxelShader::VoxelShader(VoxelData* data,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(plane_indices),
 	       plane_indices, GL_STATIC_DRAW);
-
   check_GLerror();
-
-  int vdatasize = MAX_FILL * nx * ny * nz;
   
   prog_ = LoadShaders(VERTEX_SHADER_PATH,
 		       FRAGMENT_SHADER_PATH);
+
+  int vdatasize = MAX_FILL * nx * ny * nz;
 
   vdata_.reserve(vdatasize);
   voxel_data vd;
@@ -72,7 +76,12 @@ VoxelShader::VoxelShader(VoxelData* data,
   vdata_allocs_.reserve(vdatasize / VOXEL_ALLOC);
   for (int i = 0; i < vdatasize; i++)
     vdata_allocs_.push_back(NULL_CHUNK);
-  int size = nx * ny * nz;
+
+  // Total number of voxels allowed buffered.
+  nx_t_ = (nx_ * CHUNK_DIM) * num_chunks_wide_;
+  ny_t_ = ny_;
+  nz_t_ = (nz_ * CHUNK_DIM) * num_chunks_wide_;
+  int size = nx_t_ * ny_t_ * nz_t_;
   voxels_ = new GLint[size];
   dists_  = new   int[size];
 
@@ -83,6 +92,14 @@ VoxelShader::VoxelShader(VoxelData* data,
 	       &vdata_[0], GL_DYNAMIC_COPY);
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+  glGenTextures(1, &gl_voxel_tex_);
+  glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage3D(GL_TEXTURE_3D, 0, GL_R32I,
+	       nx, ny, nz, 0, GL_RED_INTEGER,
+	       GL_INT, 0);
+
   check_GLerror();
 
   for (int x = 0; x < 1 / CHUNK_DIM; x++)
@@ -91,7 +108,7 @@ VoxelShader::VoxelShader(VoxelData* data,
 
   solvedists();
 
-  std::cout << vdata_.size() - 1 << " voxels." << std::endl;
+  std::cout << vdata_.size() << " voxels." << std::endl;
   std::cout << "Each voxel uses " << sizeof(struct voxel_data) << " bytes." << std::endl;
   std::cout << "Max voxels in box: " << nx * ny * nz << std::endl;
   std::cout << "Total mem: " << sizeof(struct voxel_data) * vdata_.size()
@@ -100,12 +117,13 @@ VoxelShader::VoxelShader(VoxelData* data,
   std::vector<glm::vec3> raydirs;
 
   // See https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
-  double a = 4.0 * PI/ NUMRAYS;
+  // TODO: I think there are bugs here. Figure it out!
+  double a = 4.0 * PI/ NUMRAYS; // BUG: Setting 4.0 -> 1.0 causes a segfault... WAT?
   double d1 = std::sqrt(a);
   double mtheta = round(PI/d1);
   double dtheta = PI/mtheta;
   double dphi = a/dtheta;
-  for (int m = 1; m < mtheta; m++) {
+  for (int m = 0; m < mtheta; m++) {
     double theta = PI*(.5+m)/mtheta;
     double mphi = round(2*PI*sin(theta)/dphi);
     for (int n = 0; n < mphi; n++) {
@@ -130,16 +148,6 @@ VoxelShader::VoxelShader(VoxelData* data,
       rays[idx++] = step.z;
     }
   }
-
-  glGenTextures(1, &gl_voxel_tex_);
-  glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexImage3D(GL_TEXTURE_3D, 0, GL_R32I,
-	       nx, ny, nz, 0, GL_RED_INTEGER,
-	       GL_INT, 0);
-  glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx, ny, nz, GL_RED_INTEGER,
-		  GL_INT, voxels_);
 
   glGenTextures(1, &gl_raydata_);
   glBindTexture(GL_TEXTURE_2D, gl_raydata_);
@@ -228,14 +236,62 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   glUseProgram(0);
 }
 
+int VoxelShader::to_chunk_pos(int x, int z)
+{
+  return x * num_chunks_wide_ + z;
+}
+
+void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
+					int chunkz, int w, int h)
+{
+  // Check each chunk in the region requested.
+  // Evict any mismatches.
+  // Allocate any now-needed chunks.
+
+  int updates = 0;
+  for (int xoff = 0; xoff < w; xoff++) {
+    for (int zoff = 0; zoff < h; zoff++) {
+      int x = xstart + xoff;
+      int z = zstart + zoff;
+      int cx = chunkx + xoff;
+      int cz = chunkz + zoff;
+      cx = (cx + num_chunks_wide_) % num_chunks_wide_;
+      cz = (cz + num_chunks_wide_) % num_chunks_wide_;
+      int chunkpos = to_chunk_pos(cx, cz);
+      chunk_id id(x, z);
+
+      if (chunk_contents_[chunkpos] != id) {
+	if (chunk_contents_[chunkpos] != NULL_CHUNK)
+	  delete_vdata(chunk_contents_[chunkpos]);
+	populate_chunk(x, z, cx, cz);
+	updates++;
+      }
+    }
+  }
+
+  if (updates > 0) {
+    solvedists();
+    glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx_t_, ny_t_, nz_t_, GL_RED_INTEGER,
+		    GL_INT, voxels_);
+  }
+}
+
 void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 {
+  chunk_id id(x, z);
+  
+  if (chunk_contents_[to_chunk_pos(voxx, voxz)] != NULL_CHUNK) {
+    std::cerr << "Attempted to write to allocated chunk." << std::endl;
+    exit(1);
+  } else {
+    chunk_contents_[to_chunk_pos(voxx, voxz)] = id;
+  }
+  
   x *= nx_ * CHUNK_DIM;
   z *= nz_ * CHUNK_DIM;
   voxx *= nx_ * CHUNK_DIM;
   voxz *= nz_ * CHUNK_DIM;
 
-  chunk_id id(x, z);
   std::cout << "Mapping chunk at " << x << ", " << z << " to " << voxx << ", " << voxz << std::endl;
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, gl_vdata_);
 
@@ -267,8 +323,7 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 	  vd.lock = 0;
 	  if (alloc_left == 0) {
 	    if (cur_alloc != -1) {
-	      std::cout << "Writing " << alloc_pos - cur_alloc << " voxels" <<
-		" at offset " << cur_alloc << " in vdata." << std::endl;
+	      std::cout << "Writing " << alloc_pos - cur_alloc << " voxels." << std::endl;
 	      glBufferSubData(GL_SHADER_STORAGE_BUFFER,
 			      cur_alloc * sizeof(struct voxel_data),
 			      (alloc_pos - cur_alloc) * sizeof(struct voxel_data),
@@ -278,9 +333,8 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 	    alloc_left = VOXEL_ALLOC;
 	    if (alloc_pos < 0) {
 	      std::cerr << "Out of voxel allocations!" << std::endl;
-	      exit(0);
+	      exit(1);
 	    }
-	    std::cout << "Successful voxel allocation." << std::endl;
 	  }
 	  voxels_[pos] = alloc_pos;
 	  vdata_[alloc_pos] = vd;
@@ -295,8 +349,7 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
     }
   }
   if (cur_alloc != -1) {
-    std::cout << "Writing " << alloc_pos - cur_alloc << " voxels" <<
-      " at offset " << cur_alloc << " in vdata." << std::endl;
+    std::cout << "Writing " << alloc_pos - cur_alloc << " voxels." << std::endl;
     glBufferSubData(GL_SHADER_STORAGE_BUFFER,
 		    cur_alloc * sizeof(struct voxel_data),
 		    (alloc_pos - cur_alloc) * sizeof(struct voxel_data),
@@ -322,6 +375,10 @@ void VoxelShader::delete_vdata(chunk_id id)
   for (int i = 0; i < vdata_allocs_.size(); i++) {
     if (vdata_allocs_[i] == id)
       vdata_allocs_[i] = NULL_CHUNK;
+  }
+  for (int i = 0; i < chunk_contents_.size(); i++) {
+    if (chunk_contents_[i] == id)
+      chunk_contents_[i] = NULL_CHUNK;
   }
 }
 

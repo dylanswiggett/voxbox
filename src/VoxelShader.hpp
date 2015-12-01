@@ -15,6 +15,7 @@
 #define VOXEL_ALLOC 1000 // Voxels allocated in groups of this size.
 #define MAX_FILL 1 // Maximum number of voxels as a multiplier of box size.
 #define BUFFER 2 // Number of chunks allocated on each side of the box.
+#define REQ_BUFFER 1 // Number of chunks required on each side of the box.
 
 using namespace std;
 
@@ -59,10 +60,14 @@ private:
   float x_, y_, z_;
   float w_, h_, d_;
   int nx_, ny_, nz_;
+  int nx_t_, ny_t_, nz_t_; // voxels + buffer
   GLuint prog_;
   GLuint vao_;
   GLuint gl_voxel_tex_, gl_vdata_, gl_raydata_;
   GLuint vertex_buffer_, element_buffer_;
+
+  int num_chunks_wide_;
+  vector<chunk_id> chunk_contents_;
 
   GLint *voxels_;
   vector<chunk_id> vdata_allocs_;
@@ -83,10 +88,12 @@ public:
 
   void draw(int w, int h, float xoff, float yoff, bool perform_update);
 private:
+  void populate_chunk_region(int x, int z, int chunkx, int chunkz, int w, int h);
   void populate_chunk(int x, int z, int voxx, int voxz);
   int alloc_vdata(chunk_id id);
   void delete_vdata(chunk_id id);
-  
+
+  int to_chunk_pos(int x, int z);
   int to_pos(glm::ivec3 p);
   void updatedistpos(glm::ivec3 p, int newdist);
   void solvedists();
