@@ -63,48 +63,21 @@ VoxelShader::VoxelShader(VoxelData* data,
   prog_ = LoadShaders(VERTEX_SHADER_PATH,
 		       FRAGMENT_SHADER_PATH);
 
-  vdata_.reserve(MAX_FILL * CHUNK_DIM * CHUNK_DIM * ny);
+  vdata_.reserve(MAX_FILL * nx * ny * nz);
+  voxel_data vd;
+  for (int i = 0; i < vdata_.capacity(); i++)
+    vdata_.push_back(vd);
   vdata_allocs_.reserve(vdata_.size() / VOXEL_ALLOC);
-  for (int i = 0; i < vdata_allocs_.size(); i++)
-    vdata_allocs_[i] = 0;
-
+  for (int i = 0; i < vdata_.size(); i++)
+    vdata_allocs_.push_back(0);
   int size = nx * ny * nz;
   voxels_ = new GLint[size];
   dists_  = new   int[size];
-  Voxel v;
-  struct voxel_data vd;
-  vdata_.push_back(vd);
-  float xscale = w / nx;
-  float yscale = h / ny;
-  float zscale = d / nz;
-  for (int xpos = 0; xpos < nx; xpos++) {
-    for (int ypos = 0; ypos < ny; ypos++) {
-      for (int zpos = 0; zpos < nz; zpos++) {
-	int pos = to_pos(glm::ivec3(xpos,ypos,zpos));
-	dists_[pos] = 1000;
-	if (data_->voxelAt(vec3(x + xscale * xpos,
-				y + yscale * ypos,
-				z + zscale * zpos), &v)) {
-	  vd.r = 255 * v.color.r;
-	  vd.g = 255 * v.color.g;
-	  vd.b = 255 * v.color.b;
-	  vd.emittance = v.emit;
-	  vd.diffuse = v.diffuse;
 
-	  vd.illum_r = vd.illum_g = vd.illum_b = 0;
-	  vd.numrays = vd.neighbors = 0;
-	  vd.flags = 0;
-	  vd.lock = 0;
-	  vdata_.push_back(vd);
-	  voxels_[pos] = vdata_.size() - 1;
-	  voxel_dists_.push(voxel_dist(glm::ivec3(xpos,ypos,zpos), 0));
-	  dists_[pos] = 0;
-	} else {
-	  voxels_[pos] = 0;
-	}
-      }
-    }
-  }
+  populate_chunk(0, 0, 0, 0);
+  populate_chunk(1, 0, 1, 0);
+  populate_chunk(0, 1, 0, 1);
+  populate_chunk(1, 1, 1, 1);
 
   solvedists();
 
@@ -112,7 +85,7 @@ VoxelShader::VoxelShader(VoxelData* data,
     for (int ypos = 0; ypos < ny; ypos++) {
       for (int zpos = 0; zpos < nz; zpos++) {
 	int pos = to_pos(glm::ivec3(xpos,ypos,zpos));
-	if (voxels_[pos] == 0)
+	if (voxels_[pos] <= 0)
 	  voxels_[pos] = -dists_[pos];
       }
     }
@@ -263,7 +236,13 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
 
 void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 {
+  x *= nx_ * CHUNK_DIM;
+  z *= nz_ * CHUNK_DIM;
+  voxx *= nx_ * CHUNK_DIM;
+  voxz *= nz_ * CHUNK_DIM;
+  
   chunk_id id = new_chunk();
+  std::cout << "Allocating chunk " << id << std::endl;
 
   Voxel v;
   voxel_data vd;
@@ -272,14 +251,14 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
   float zscale = d_ / nz_;
   int alloc_left = 0;
   int alloc_pos = 0;
-  for (int xpos = x; xpos < x + CHUNK_DIM * nx_; xpos++) {
+  for (int xpos = 0; xpos < CHUNK_DIM * nx_; xpos++) {
     for (int ypos = 0; ypos < ny_; ypos++) {
-      for (int zpos = z; zpos < z + CHUNK_DIM * nz_; zpos++) {
+      for (int zpos = 0; zpos < CHUNK_DIM * nz_; zpos++) {
 	int pos = to_pos(glm::ivec3(xpos + voxx, ypos, zpos + voxz));
 	dists_[pos] = 1000;
-	if (data_->voxelAt(vec3(x + xscale * xpos,
-				0 + yscale * ypos,
-				z + zscale * zpos), &v)) {
+	if (data_->voxelAt(vec3(xscale * (xpos + x),
+				yscale * (ypos + 0),
+				zscale * (zpos + z)), &v)) {
 	  vd.r = 255 * v.color.r;
 	  vd.g = 255 * v.color.g;
 	  vd.b = 255 * v.color.b;
@@ -293,10 +272,15 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 	  if (alloc_left == 0) {
 	    alloc_pos = alloc_vdata(id);
 	    alloc_left = VOXEL_ALLOC;
+	    if (alloc_pos < 0) {
+	      std::cerr << "Out of voxel allocations!" << std::endl;
+	      exit(0);
+	    }
+	    std::cout << "Successful voxel allocation." << std::endl;
 	  }
 	  voxels_[pos] = alloc_pos;
 	  vdata_[alloc_pos] = vd;
-	  voxel_dists_.push(voxel_dist(glm::ivec3(xpos,ypos,zpos), 0));
+	  voxel_dists_.push(voxel_dist(glm::ivec3(xpos + x, ypos, zpos + z), 0));
 	  dists_[pos] = 0;
 	  alloc_pos++;
 	  alloc_left--;

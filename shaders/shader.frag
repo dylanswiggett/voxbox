@@ -59,7 +59,7 @@ int voxelAt(ivec3 pos, out int vloc) {
     return 1;
   }
 
-  vloc = -vloc; // vloc is now the distance;
+  vloc = -min(vloc, -1); // vloc is now the distance;
   return 0;
 }
 
@@ -261,6 +261,11 @@ void main() {
       color = vec3(.2, .2, .4);
     return;
   }
+
+  /* Fast track rendering.
+  color = vd_color(vdata[vloc]);
+  return;
+  */
 
   int check = time;
   if (atomicExchange(vdata[vloc].lock, check) != check) {
