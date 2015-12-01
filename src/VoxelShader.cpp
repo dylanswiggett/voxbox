@@ -63,6 +63,11 @@ VoxelShader::VoxelShader(VoxelData* data,
   prog_ = LoadShaders(VERTEX_SHADER_PATH,
 		       FRAGMENT_SHADER_PATH);
 
+  vdata_.reserve(MAX_FILL * CHUNK_DIM * CHUNK_DIM * ny);
+  vdata_allocs_.reserve(vdata_.size() / VOXEL_ALLOC);
+  for (int i = 0; i < vdata_allocs_.size(); i++)
+    vdata_allocs_[i] = 0;
+
   int size = nx * ny * nz;
   voxels_ = new GLint[size];
   dists_  = new   int[size];
@@ -256,7 +261,81 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   glUseProgram(0);
 }
 
-int VoxelShader::to_pos(glm::ivec3 v) {
+void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
+{
+  chunk_id id = new_chunk();
+
+  Voxel v;
+  voxel_data vd;
+  float xscale = w_ / nx_;
+  float yscale = h_ / ny_;
+  float zscale = d_ / nz_;
+  int alloc_left = 0;
+  int alloc_pos = 0;
+  for (int xpos = x; xpos < x + CHUNK_DIM * nx_; xpos++) {
+    for (int ypos = 0; ypos < ny_; ypos++) {
+      for (int zpos = z; zpos < z + CHUNK_DIM * nz_; zpos++) {
+	int pos = to_pos(glm::ivec3(xpos + voxx, ypos, zpos + voxz));
+	dists_[pos] = 1000;
+	if (data_->voxelAt(vec3(x + xscale * xpos,
+				0 + yscale * ypos,
+				z + zscale * zpos), &v)) {
+	  vd.r = 255 * v.color.r;
+	  vd.g = 255 * v.color.g;
+	  vd.b = 255 * v.color.b;
+	  vd.emittance = v.emit;
+	  vd.diffuse = v.diffuse;
+
+	  vd.illum_r = vd.illum_g = vd.illum_b = 0;
+	  vd.numrays = vd.neighbors = 0;
+	  vd.flags = 0;
+	  vd.lock = 0;
+	  if (alloc_left == 0) {
+	    alloc_pos = alloc_vdata(id);
+	    alloc_left = VOXEL_ALLOC;
+	  }
+	  voxels_[pos] = alloc_pos;
+	  vdata_[alloc_pos] = vd;
+	  voxel_dists_.push(voxel_dist(glm::ivec3(xpos,ypos,zpos), 0));
+	  dists_[pos] = 0;
+	  alloc_pos++;
+	  alloc_left--;
+	} else {
+	  voxels_[pos] = 0;
+	}
+      }
+    }
+  }
+
+}
+
+chunk_id VoxelShader::new_chunk()
+{
+  return ++chunk_uid_counter;
+}
+
+int VoxelShader::alloc_vdata(chunk_id id)
+{
+  for (int i = 0; i < vdata_allocs_.size(); i++) {
+    if (vdata_allocs_[i] == 0) { // found free alloc
+      vdata_allocs_[i] = id;
+      return i * VOXEL_ALLOC; // return offset
+    }
+  }
+
+  return -1; // No alloc
+}
+
+void VoxelShader::delete_vdata(chunk_id id)
+{
+  for (int i = 0; i < vdata_allocs_.size(); i++) {
+    if (vdata_allocs_[i] == id)
+      vdata_allocs_[i] = 0;
+  }
+}
+
+int VoxelShader::to_pos(glm::ivec3 v)
+{
   return v.x * ny_ * nz_ + v.y * nz_ + v.z;
 }
 
