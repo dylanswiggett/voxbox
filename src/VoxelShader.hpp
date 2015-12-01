@@ -11,7 +11,7 @@
 #define FRAGMENT_SHADER_PATH "shaders/shader.frag"
 
 // Parameters for dynamic chunk swapping.
-#define CHUNK_DIM 0.25 // Chunk width/height as a multiplier of height.
+#define CHUNK_DIM .25 // Chunk width/height as a multiplier of height.
 #define VOXEL_ALLOC 1000 // Voxels allocated in groups of this size.
 #define MAX_FILL 1 // Maximum number of voxels as a multiplier of box size.
 #define BUFFER 2 // Number of chunks allocated on each side of the box.
