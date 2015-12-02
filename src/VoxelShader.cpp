@@ -310,7 +310,9 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
 	int boxx2 = (boxx + boxw) % nx_t_;
 	int boxz2 = (boxz + boxd) % nz_t_;
 
-	cout << "Updating [" << boxx << "," << boxx2 << "] x [" << boxz << "," << boxz2 << "]." << endl;
+	cout << "Updating dists in ["
+	     << boxx << "," << boxx2 << "] x ["
+	     << boxz << "," << boxz2 << "]." << endl;
 
 	int pos;
 	for (int y = 0; y < ny_t_; y++) {
@@ -324,7 +326,7 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
 	  for (int z = boxz; z != boxz2; z = (z + 1) % nz_t_) {
 	    pos = to_pos(glm::ivec3(boxx, y, z));
 	    voxel_dists_.push(voxel_dist(glm::ivec3(boxx, y, z), dists_[pos]));
-	    pos = to_pos(glm::ivec3(boxx2, y, z));
+	    pos = to_pos(glm::ivec3(boxx2 + 1, y, z));
 	    voxel_dists_.push(voxel_dist(glm::ivec3(boxx2, y, z), dists_[pos]));
 	  }
 	}
@@ -338,7 +340,7 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
   }
 
   if (updates > 0) {
-    std::cout << "Some updates." << std::endl;
+    std::cout << "Recalculating distance field." << std::endl;
     solvedists();
     glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
     glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx_t_, ny_t_, nz_t_, GL_RED_INTEGER,
@@ -379,7 +381,7 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
     for (int ypos = 0; ypos < ny_; ypos++) {
       for (int zpos = 0; zpos < CHUNK_DIM * nz_; zpos++) {
 	int pos = to_pos(glm::ivec3(xpos + voxx, ypos, zpos + voxz));
-	dists_[pos] = 1000;
+	//dists_[pos] = 1000;
 	if (data_->voxelAt(vec3(xscale * (xpos + x),
 				yscale * (ypos + 0),
 				zscale * (zpos + z)), &v)) {
@@ -411,7 +413,7 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 	  voxels_[pos] = alloc_pos;
 	  vdata_[alloc_pos] = vd;
 	  voxel_dists_.push(voxel_dist(glm::ivec3((xpos + voxx) % nx_t_, ypos,
-						  (zpos + voxz) % ny_t_), 0));
+						  (zpos + voxz) % nz_t_), 0));
 	  dists_[pos] = 0;
 	  alloc_pos++;
 	  alloc_left--;
