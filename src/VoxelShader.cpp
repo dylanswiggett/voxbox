@@ -299,23 +299,46 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
 	if (chunk_contents_[chunkpos] != NULL_CHUNK)
 	  delete_vdata(chunk_contents_[chunkpos]);
 	populate_chunk(x, z, cx, cz);
+
+	int voxx = x * (int)(CHUNK_DIM * nx_);
+	int voxz = z * (int)(CHUNK_DIM * nz_);
+	
+	int boxx = (voxx - 1 + nx_t_) % nx_t_;
+	int boxz = (voxz - 1 + nz_t_) % nz_t_;
+	int boxw = CHUNK_DIM * nx_ + 2;
+	int boxd = CHUNK_DIM * nz_ + 2;
+	int boxx2 = (boxx + boxw) % nx_t_;
+	int boxz2 = (boxz + boxd) % nz_t_;
+
+	cout << "Updating [" << boxx << "," << boxx2 << "] x [" << boxz << "," << boxz2 << "]." << endl;
+
+	int pos;
+	for (int y = 0; y < ny_t_; y++) {
+	  for (int x = boxx; x != boxx2; x = (x + 1) % nx_t_) {
+	    pos = to_pos(glm::ivec3(x, y, boxz));
+	    voxel_dists_.push(voxel_dist(glm::ivec3(x, y, boxz), dists_[pos]));
+	    pos = to_pos(glm::ivec3(x, y, boxz2 + 1));
+	    voxel_dists_.push(voxel_dist(glm::ivec3(x, y, boxz2), dists_[pos]));
+	  }
+
+	  for (int z = boxz; z != boxz2; z = (z + 1) % nz_t_) {
+	    pos = to_pos(glm::ivec3(boxx, y, z));
+	    voxel_dists_.push(voxel_dist(glm::ivec3(boxx, y, z), dists_[pos]));
+	    pos = to_pos(glm::ivec3(boxx2, y, z));
+	    voxel_dists_.push(voxel_dist(glm::ivec3(boxx2, y, z), dists_[pos]));
+	  }
+	}
 	updates++;
       }
-      if (updates > 10) // Cap at one update per frame (for now)
+      if (updates > MAX_CONCUR_BUFFER) // Cap number per frame.
 	break;
     }
-    if (updates > 10)
+    if (updates > MAX_CONCUR_BUFFER)
       break;
   }
 
   if (updates > 0) {
     std::cout << "Some updates." << std::endl;
-    for (int x = 0; x < nx_t_; x++)
-      for (int y = 0; y < ny_t_; y++)
-	for (int z = 0; z < nz_t_; z++) {
-	  int pos = to_pos(glm::ivec3(x, y, z));
-	  voxel_dists_.push(voxel_dist(glm::ivec3(x, y, z), dists_[pos]));    
-	}
     solvedists();
     glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
     glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx_t_, ny_t_, nz_t_, GL_RED_INTEGER,

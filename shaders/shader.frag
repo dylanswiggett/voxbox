@@ -161,7 +161,7 @@ bool raymarch(ivec3 pos, ivec3 norm, out int vloc, out vec3 randdir) {
   while (i < raylen && stat == 0) {
     off = texelFetch(rays, ivec2(i, (time + r) % numrays), 0).rgb;
     // More realistic lighting, but at a perf hit.
-    //off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
+    off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
     ivec3 offpos = pos + off;
     i += vloc;
     stat = voxelAt(offpos, vloc);
