@@ -75,15 +75,15 @@ int main(int argc, char** argv)
   d.addVoxels(new BoxVoxelData(vec3(8,6,8), vec3(5, 1, 5), Voxel(vec3(.3, .3, .3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(9,6,9), vec3(3, 2, 3), Voxel(vec3(.3, .3, .3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(10,6,10), vec3(1, 3, 1), Voxel(vec3(.3, .3, .3), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(0,0,0), vec3(20, 1, 20), Voxel(vec3(1,.6,.6), 0, 255)));
+  d.addVoxels(new BoxVoxelData(vec3(-5,0,-5), vec3(30, 1, 30), Voxel(vec3(1,.6,.6), 0, 255)));
 
   VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 60, 60, 60);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 200, 200, 200);
   
   running = true;
-  float xoff = 10000;
-  float yoff = 10000;
+  float xoff = 0;//10000;
+  float yoff = 0;//10000;
   float xsp = 0;
   float ysp = 0;
   float speed = .3;

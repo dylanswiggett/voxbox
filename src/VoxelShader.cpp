@@ -84,6 +84,10 @@ VoxelShader::VoxelShader(VoxelData* data,
   int size = nx_t_ * ny_t_ * nz_t_;
   voxels_ = new GLint[size];
   dists_  = new   int[size];
+  for (int i = 0; i < size; i++) {
+    voxels_[i] = 0;
+    dists_[i] = 1000;
+  }
 
   // Create buffer for vdata.
   glGenBuffers(1, &gl_vdata_);
@@ -97,16 +101,13 @@ VoxelShader::VoxelShader(VoxelData* data,
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage3D(GL_TEXTURE_3D, 0, GL_R32I,
-	       nx, ny, nz, 0, GL_RED_INTEGER,
+	       nx_t_, ny_t_, nz_t_, 0, GL_RED_INTEGER,
 	       GL_INT, 0);
+  glBindTexture(GL_TEXTURE_3D, 0);
 
   check_GLerror();
 
-  for (int x = 0; x < 1 / CHUNK_DIM; x++)
-    for (int y = 0; y < 1 / CHUNK_DIM; y++)
-      populate_chunk(x,y,x,y);
-
-  solvedists();
+  populate_chunk_region(0, 0, 0, 0, num_chunks_wide_, num_chunks_wide_);
 
   std::cout << vdata_.size() << " voxels." << std::endl;
   std::cout << "Each voxel uses " << sizeof(struct voxel_data) << " bytes." << std::endl;
@@ -181,7 +182,37 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
 {
   GLuint loc;
   glUseProgram(prog_);
-  
+
+  // visible voxel corner in world
+  int xpos = (int)xoff * 3;
+  int zpos = (int)yoff * 3;
+
+  // visible voxel corner in buffer
+  int voxelx = xpos % nx_t_;
+  int voxelz = zpos % nz_t_;
+  if (voxelx < 0) voxelx += nx_t_;
+  if (voxelz < 0) voxelz += nz_t_;
+
+  // buffered voxel corner in world
+  int min_voxelx = xpos - (int)(nx_ * CHUNK_DIM) * REQ_BUFFER;
+  int min_voxelz = zpos - (int)(nz_ * CHUNK_DIM) * REQ_BUFFER;
+
+  // buffered chunk corner in world
+  int min_chunkx = min_voxelx / (nx_ * CHUNK_DIM);
+  int min_chunkz = min_voxelz / (nz_ * CHUNK_DIM);
+
+  // buffered chunk corner in buffer
+  int voxel_chunkx = min_chunkx % num_chunks_wide_;
+  int voxel_chunkz = min_chunkz % num_chunks_wide_;
+  if (voxel_chunkx < 0) voxel_chunkx += num_chunks_wide_;
+  if (voxel_chunkz < 0) voxel_chunkz += num_chunks_wide_;
+
+  // dimension of chunks to be overwritten.
+  int numchunks = num_chunks_wide_  + 2 * (REQ_BUFFER - BUFFER);
+
+  populate_chunk_region(min_chunkx, min_chunkz, voxel_chunkx, voxel_chunkz,
+			numchunks, numchunks);
+
   // Pass everything into the shader.
   loc = glGetUniformLocation(prog_, "wsize");
   glUniform2i(loc, w, h);
@@ -189,10 +220,14 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   glUniform3f(loc, x_, y_, z_);
   loc = glGetUniformLocation(prog_, "dim");
   glUniform3f(loc, w_, h_, d_);
+  
+  loc = glGetUniformLocation(prog_, "voxeloffset");
+  glUniform3i(loc, voxelx, 0, voxelz);
   loc = glGetUniformLocation(prog_, "nvoxels");
   glUniform3i(loc, nx_, ny_, nz_);
-  loc = glGetUniformLocation(prog_, "viewoff");
-  glUniform2f(loc, xoff, yoff);
+  loc = glGetUniformLocation(prog_, "totalvoxels");
+  glUniform3i(loc, nx_t_, ny_t_, nz_t_);
+  
   loc = glGetUniformLocation(prog_, "update");
   glUniform1i(loc, perform_update ? 1 : 0);
   loc = glGetUniformLocation(prog_, "raylen");
@@ -266,13 +301,27 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
 	populate_chunk(x, z, cx, cz);
 	updates++;
       }
+      if (updates > 1) // Cap at one update per frame (for now)
+	break;
     }
+    if (updates > 1)
+      break;
   }
 
   if (updates > 0) {
-    solvedists();
+    std::cout << "Some updates." << std::endl;
+    int chunkw = (int)(nx_ * CHUNK_DIM);
+    int chunkd = (int)(nz_ * CHUNK_DIM);
+    int lowx = (nx_t_ + xstart * chunkw % nx_t_) % nx_t_;
+    int lowz = (nz_t_ + zstart * chunkd % nz_t_) % nz_t_;
+    int highx = (lowx + chunkw * w - 1) % nx_t_;
+    int highz = (lowz + chunkd * h - 1) % nz_t_;
+    solvedists(lowz, lowz, highx, highz);
+    glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
     glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx_t_, ny_t_, nz_t_, GL_RED_INTEGER,
 		    GL_INT, voxels_);
+    glBindTexture(GL_TEXTURE_3D, 0);
+    check_GLerror();
   }
 }
 
@@ -338,7 +387,8 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 	  }
 	  voxels_[pos] = alloc_pos;
 	  vdata_[alloc_pos] = vd;
-	  voxel_dists_.push(voxel_dist(glm::ivec3(xpos + x, ypos, zpos + z), 0));
+	  voxel_dists_.push(voxel_dist(glm::ivec3((xpos + voxx) % nx_t_, ypos,
+						  (zpos + voxz) % ny_t_), 0));
 	  dists_[pos] = 0;
 	  alloc_pos++;
 	  alloc_left--;
@@ -384,15 +434,15 @@ void VoxelShader::delete_vdata(chunk_id id)
 
 int VoxelShader::to_pos(glm::ivec3 v)
 {
-  return v.x * ny_ * nz_ + v.y * nz_ + v.z;
+  return v.x * ny_t_ * nz_t_ + v.y * nz_t_ + v.z;
 }
 
 void VoxelShader::updatedistpos(glm::ivec3 p, int newdist)
 {
   // Wrapping world.
-  p.x = (p.x + nx_) % nx_;
-  p.y = (p.y + ny_) % ny_;
-  p.z = (p.z + nz_) % nz_;
+  p.x = (p.x + nx_t_) % nx_t_;
+  p.y = (p.y + ny_t_) % ny_t_;
+  p.z = (p.z + nz_t_) % nz_t_;
   
   int pos = to_pos(p);
   if (dists_[pos] <= newdist)
@@ -401,24 +451,31 @@ void VoxelShader::updatedistpos(glm::ivec3 p, int newdist)
   voxel_dists_.push(voxel_dist(p, newdist));
 }
 
-void VoxelShader::solvedists()
+void VoxelShader::solvedists(int minx, int minz, int maxx, int maxz)
 {
+  int updated = 0;
   int count = 0;
   while (!voxel_dists_.empty()) {
     voxel_dist p = voxel_dists_.front();
     voxel_dists_.pop();
 
-    updatedistpos(p.pos + glm::ivec3(1,0,0), p.dist + 1);
-    updatedistpos(p.pos + glm::ivec3(-1,0,0), p.dist + 1);
+    updated++;
+
+    if (p.pos.x != maxx)
+      updatedistpos(p.pos + glm::ivec3(1,0,0), p.dist + 1);
+    if (p.pos.x != minx)
+      updatedistpos(p.pos + glm::ivec3(-1,0,0), p.dist + 1);
     updatedistpos(p.pos + glm::ivec3(0,1,0), p.dist + 1);
     updatedistpos(p.pos + glm::ivec3(0,-1,0), p.dist + 1);
-    updatedistpos(p.pos + glm::ivec3(0,0,1), p.dist + 1);
-    updatedistpos(p.pos + glm::ivec3(0,0,-1), p.dist + 1);
+    if (p.pos.z != maxz)
+      updatedistpos(p.pos + glm::ivec3(0,0,1), p.dist + 1);
+    if (p.pos.z != minz)
+      updatedistpos(p.pos + glm::ivec3(0,0,-1), p.dist + 1);
   }
 
-  for (int xpos = 0; xpos < nx_; xpos++) {
-    for (int ypos = 0; ypos < ny_; ypos++) {
-      for (int zpos = 0; zpos < nz_; zpos++) {
+  for (int xpos = 0; xpos < nx_t_; xpos++) {
+    for (int ypos = 0; ypos < ny_t_; ypos++) {
+      for (int zpos = 0; zpos < nz_t_; zpos++) {
 	int pos = to_pos(glm::ivec3(xpos,ypos,zpos));
 	if (voxels_[pos] <= 0)
 	  voxels_[pos] = -dists_[pos];
@@ -428,7 +485,8 @@ void VoxelShader::solvedists()
     }
   }
 
-  std::cout << "Visited " << count << " voxels while finding dists." << std::endl;
+  std::cout << "Visited " << count << " voxels while finding new dists for " <<
+    updated << " spaces." << std::endl;
 }
 
 std::vector<glm::ivec3> VoxelShader::makeray(int maxlen, glm::vec3 dir)

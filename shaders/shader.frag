@@ -25,12 +25,10 @@ vec3 vd_color(struct voxel_data vd) {
 
 uniform isampler3D voxels;
 uniform ivec2 wsize;
-uniform ivec3 viewcorner;
-uniform ivec3 voxeloffset;
-uniform ivec3 totalvoxels;
-uniform vec2 viewoff;
 uniform vec3 corner, dim;
-uniform ivec3 nvoxels;
+uniform ivec3 voxeloffset; // Offset in voxels
+uniform ivec3 nvoxels; // Voxels in view
+uniform ivec3 totalvoxels; // Voxels available
 uniform int time;
 uniform int update;
 
@@ -46,11 +44,13 @@ vec3 c1, c2;
 //     0 for no-hit
 //    -1 for outside
 int voxelAt(ivec3 pos, out int vloc) {
-  if (pos.y < 0 || pos.y >= nvoxels.y)
+  if (pos.y < 0 || pos.y >= totalvoxels.y)
     return -1;
-  
-  pos.x %= nvoxels.x;
-  pos.z %= nvoxels.z;
+
+  pos += voxeloffset;
+
+  pos.x %= totalvoxels.x;
+  pos.z %= totalvoxels.z;
   /*
 #include <time.h>  vec3 s = step(vec3(0,0,0), pos) - step(nvoxels, pos);
   if (s.x * s.y * s.z == 0)
@@ -132,10 +132,10 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
     return ivec3(-1,-1,-1);
   }
 
-  idx = 1;
-  ivec3 off = ivec3(viewoff.x / voxelScale.x, 0, viewoff.y / voxelScale.y);
+  //return ivec3(-1,-1,-1);
 
-  while (curVoxel - off == abs(curVoxel - off) && stat == 0) {
+  idx = 1;
+  while (curVoxel == abs(curVoxel) && stat == 0) {
     curVoxel +=
       steps[idx] * (vloc + 2) / 3 +
       steps[idx + 1] * (vloc + 1) / 3 +
@@ -144,7 +144,7 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
 
     stat = voxelAt(curVoxel, vloc);
   }
-  if (curVoxel - off == abs(curVoxel - off) && stat == 1) {
+  if (curVoxel == abs(curVoxel) && stat == 1) {
     laststep = steps[idx + 2];
     return curVoxel;
   }
@@ -161,7 +161,7 @@ bool raymarch(ivec3 pos, ivec3 norm, out int vloc, out vec3 randdir) {
   while (i < raylen && stat == 0) {
     off = texelFetch(rays, ivec2(i, (time + r) % numrays), 0).rgb;
     // More realistic lighting, but at a perf hit.
-    off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
+    //off = off * (ivec3(1,1,1) - abs(norm)) + abs(off) * norm;
     ivec3 offpos = pos + off;
     i += vloc;
     stat = voxelAt(offpos, vloc);
@@ -256,11 +256,12 @@ void main() {
     color = vec3(.1, .1, .2);
     return;
   }
-  camerapos += cameradir * (t + .01) + vec3(viewoff.x, 0, viewoff.y);
+  camerapos += cameradir * (t + .01);
 
   int vloc;
   ivec3 laststep;
   ivec3 voxel = isoraymarch(camerapos, vloc, laststep);
+  
   if (vloc <= 0) {
     if (vloc == 0)
       color = vec3(.15, .15, .3);
@@ -268,6 +269,11 @@ void main() {
       color = vec3(.2, .2, .4);
     return;
   }
+  /*
+  color = vec3(1,1,1) * vloc / 100;
+  return;
+  */
+
 
   /* Fast track rendering.
   color = vd_color(vdata[vloc]);
