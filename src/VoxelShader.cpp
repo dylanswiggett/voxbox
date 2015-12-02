@@ -184,8 +184,8 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   glUseProgram(prog_);
 
   // visible voxel corner in world
-  int xpos = (int)xoff * 3;
-  int zpos = (int)yoff * 3;
+  int xpos = (int)xoff;
+  int zpos = (int)yoff;
 
   // visible voxel corner in buffer
   int voxelx = xpos % nx_t_;
@@ -301,22 +301,22 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
 	populate_chunk(x, z, cx, cz);
 	updates++;
       }
-      if (updates > 1) // Cap at one update per frame (for now)
+      if (updates > 10) // Cap at one update per frame (for now)
 	break;
     }
-    if (updates > 1)
+    if (updates > 10)
       break;
   }
 
   if (updates > 0) {
     std::cout << "Some updates." << std::endl;
-    int chunkw = (int)(nx_ * CHUNK_DIM);
-    int chunkd = (int)(nz_ * CHUNK_DIM);
-    int lowx = (nx_t_ + xstart * chunkw % nx_t_) % nx_t_;
-    int lowz = (nz_t_ + zstart * chunkd % nz_t_) % nz_t_;
-    int highx = (lowx + chunkw * w - 1) % nx_t_;
-    int highz = (lowz + chunkd * h - 1) % nz_t_;
-    solvedists(lowz, lowz, highx, highz);
+    for (int x = 0; x < nx_t_; x++)
+      for (int y = 0; y < ny_t_; y++)
+	for (int z = 0; z < nz_t_; z++) {
+	  int pos = to_pos(glm::ivec3(x, y, z));
+	  voxel_dists_.push(voxel_dist(glm::ivec3(x, y, z), dists_[pos]));    
+	}
+    solvedists();
     glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
     glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx_t_, ny_t_, nz_t_, GL_RED_INTEGER,
 		    GL_INT, voxels_);
@@ -451,7 +451,7 @@ void VoxelShader::updatedistpos(glm::ivec3 p, int newdist)
   voxel_dists_.push(voxel_dist(p, newdist));
 }
 
-void VoxelShader::solvedists(int minx, int minz, int maxx, int maxz)
+void VoxelShader::solvedists()
 {
   int updated = 0;
   int count = 0;
@@ -461,16 +461,12 @@ void VoxelShader::solvedists(int minx, int minz, int maxx, int maxz)
 
     updated++;
 
-    if (p.pos.x != maxx)
-      updatedistpos(p.pos + glm::ivec3(1,0,0), p.dist + 1);
-    if (p.pos.x != minx)
-      updatedistpos(p.pos + glm::ivec3(-1,0,0), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(1,0,0), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(-1,0,0), p.dist + 1);
     updatedistpos(p.pos + glm::ivec3(0,1,0), p.dist + 1);
     updatedistpos(p.pos + glm::ivec3(0,-1,0), p.dist + 1);
-    if (p.pos.z != maxz)
-      updatedistpos(p.pos + glm::ivec3(0,0,1), p.dist + 1);
-    if (p.pos.z != minz)
-      updatedistpos(p.pos + glm::ivec3(0,0,-1), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(0,0,1), p.dist + 1);
+    updatedistpos(p.pos + glm::ivec3(0,0,-1), p.dist + 1);
   }
 
   for (int xpos = 0; xpos < nx_t_; xpos++) {

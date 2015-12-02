@@ -96,7 +96,7 @@ private:
   int to_chunk_pos(int x, int z);
   int to_pos(glm::ivec3 p);
   void updatedistpos(glm::ivec3 p, int newdist);
-  void solvedists(int minx, int minz, int maxx, int maxz);
+  void solvedists();
   std::vector<glm::ivec3> makeray(int maxlen, glm::vec3 dir);
   std::vector<glm::ivec3> makerandomray(int maxlen, glm::vec3 *dir);
 };
