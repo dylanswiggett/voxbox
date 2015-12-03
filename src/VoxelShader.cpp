@@ -459,6 +459,9 @@ void VoxelShader::updatedistpos(glm::ivec3 p, int newdist)
 
 void VoxelShader::solvedists()
 {
+  // TODO: Don't step over incorrect chunk boundaries.
+  // (This could speed chunk swapping up a lot)
+  
   int updated = 0;
   int count = 0;
   while (!voxel_dists_.empty()) {

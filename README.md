@@ -7,9 +7,11 @@ Opengl 4.3 or later.
 
 ## To do
 
-* Scenes larger than the box
-* Demand loading
 * Different colors/locks for each voxel side
+* Optimize the distance field
+* More land types
+* Interactive terrain
+* Adaptively clear lighting to allow moving components
 
 ## Screenshots
 
