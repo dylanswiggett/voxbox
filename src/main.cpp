@@ -78,10 +78,14 @@ int main(int argc, char** argv)
   d.addVoxels(new BoxVoxelData(vec3(-5,0,-5), vec3(30, 1, 30), Voxel(vec3(1,.6,.6), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(-15,0,-15), vec3(80, 1, 50), Voxel(vec3(.6,1,.6), 0, 255)));
 
-  for (int i = 0; i < 10; i++)
-    d.addVoxels(new BoxVoxelData(vec3(30 + i , i + 1,i),
-				 vec3(20 - 2*i, 1, 20 - 2*i),
-				 Voxel(vec3(.6,1,.6), 0, 255)));
+  for (int i = 0; i < 10; i++) {
+    d.addVoxels(new BoxVoxelData(vec3(30 + i * .5 , 1.5 * i + 1,i * .5),
+				 vec3(10 - i, 2, 10 - i),
+				 Voxel(vec3(.6,1.0 - .1 * i,.6), 0, 255)));
+    d.addVoxels(new BoxVoxelData(vec3(25 + i * .5 , i + 1,13 + i * .5),
+				 vec3(10 - i, 2, 10 - i),
+				 Voxel(vec3(.6,1.0 - .1 * i,.6), 0, 255)));
+  }
 
   VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 60, 60, 60);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);

@@ -12,7 +12,7 @@
 #include "shader_loader.h"
 
 #define RAYLEN 200
-#define NUMRAYS 1000
+#define NUMRAYS 2000
 
 #define PI 3.141592
 

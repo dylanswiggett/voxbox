@@ -68,7 +68,7 @@ float rand(vec2 co){
   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
+ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep, out int stepcount) {
   vec3 voxelScale = (dim - corner) / nvoxels;
   vec3 offset = pos - corner;
   ivec3 curVoxel = ivec3(floor(offset / voxelScale));
@@ -121,6 +121,7 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
 
   int stat = voxelAt(curVoxel, vloc);
   laststep = steps[0];
+  stepcount = 1;
   if (stat == 1) { // Special case for hitting voxel at edge of box (don't draw).
     vloc = 0;
     return ivec3(-1,-1,-1);
@@ -135,6 +136,8 @@ ivec3 isoraymarch(vec3 pos, out int vloc, out ivec3 laststep) {
       steps[idx + 1] * (vloc + 1) / 3 +
       steps[idx + 2] * vloc / 3;
     idx = (idx + vloc) % 3;
+
+    stepcount++;
 
     stat = voxelAt(curVoxel, vloc);
   }
@@ -201,7 +204,7 @@ void process_voxel(inout voxel_data vox, ivec3 laststep, ivec3 voxel) {
     lighting = direct_lighting + indirect_lighting; //max(direct_lighting, indirect_lighting);
   } else {
     //lighting = vec3(1,1,1) * dot(randdir, vec3(1, .2, -.3));
-    vec3 lightdir = vec3(1,.5,-1);
+    vec3 lightdir = vec3(1,.6,-1);
     float light = dot(randdir, lightdir);
     if (light > .5)
       lighting = vec3(1,1,1) * light;
@@ -254,13 +257,16 @@ void main() {
 
   int vloc;
   ivec3 laststep;
-  ivec3 voxel = isoraymarch(camerapos, vloc, laststep);
+  int stepcount;
+  ivec3 voxel = isoraymarch(camerapos, vloc, laststep, stepcount);
+  //float cscale = (30.0 - clamp(stepcount, 1, 30)) / 30.0;
   
   if (vloc <= 0) {
     if (vloc == 0)
       color = vec3(.15, .15, .3);
     else
       color = vec3(.2, .2, .4);
+    //color *= cscale;
     return;
   }
   /*
@@ -290,6 +296,7 @@ void main() {
   if (maxcomp > 1)
     color /= maxcomp;
   //color = clamp(color, 0, 1);
+  //color *= cscale;
 
   return;
 }
