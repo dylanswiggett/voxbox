@@ -11,12 +11,12 @@
 #define FRAGMENT_SHADER_PATH "shaders/shader.frag"
 
 // Parameters for dynamic chunk swapping.
-#define CHUNK_DIM .5 // Chunk width/height as a multiplier of height.
+#define CHUNK_DIM .25 // Chunk width/height as a multiplier of height.
 #define VOXEL_ALLOC 1000 // Voxels allocated in groups of this size.
 #define MAX_FILL 1 // Maximum number of voxels as a multiplier of box size.
-#define BUFFER 2 // Number of chunks allocated on each side of the box.
+#define BUFFER 5 // Number of chunks allocated on each side of the box.
 #define REQ_BUFFER 1 // Number of chunks required on each side of the box.
-#define MAX_CONCUR_BUFFER 1 // Number of chunks to transfer per frame.
+#define MAX_CONCUR_BUFFER 2 // Number of chunks to transfer per frame.
 
 using namespace std;
 
@@ -89,8 +89,8 @@ public:
 
   void draw(int w, int h, float xoff, float yoff, bool perform_update);
 private:
-  void populate_chunk_region(int x, int z, int chunkx, int chunkz, int w, int h);
-  void populate_chunk(int x, int z, int voxx, int voxz);
+  void populate_chunk_region(int x, int z, int w, int h);
+  void populate_chunk(int x, int z);
   int alloc_vdata(chunk_id id);
   void delete_vdata(chunk_id id);
 

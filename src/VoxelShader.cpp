@@ -107,8 +107,6 @@ VoxelShader::VoxelShader(VoxelData* data,
 
   check_GLerror();
 
-  populate_chunk_region(0, 0, 0, 0, num_chunks_wide_, num_chunks_wide_);
-
   std::cout << vdata_.size() << " voxels." << std::endl;
   std::cout << "Each voxel uses " << sizeof(struct voxel_data) << " bytes." << std::endl;
   std::cout << "Max voxels in box: " << nx * ny * nz << std::endl;
@@ -187,31 +185,19 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   int xpos = (int)xoff;
   int zpos = (int)yoff;
 
-  // visible voxel corner in buffer
-  int voxelx = xpos % nx_t_;
-  int voxelz = zpos % nz_t_;
-  if (voxelx < 0) voxelx += nx_t_;
-  if (voxelz < 0) voxelz += nz_t_;
-
-  // buffered voxel corner in world
-  int min_voxelx = xpos - (int)(nx_ * CHUNK_DIM) * REQ_BUFFER;
-  int min_voxelz = zpos - (int)(nz_ * CHUNK_DIM) * REQ_BUFFER;
+  // visible chunk corner in world
+  int chunkx = xpos / (nx_ * CHUNK_DIM);
+  int chunkz = zpos / (nz_ * CHUNK_DIM);
 
   // buffered chunk corner in world
-  int min_chunkx = min_voxelx / (nx_ * CHUNK_DIM);
-  int min_chunkz = min_voxelz / (nz_ * CHUNK_DIM);
-
-  // buffered chunk corner in buffer
-  int voxel_chunkx = min_chunkx % num_chunks_wide_;
-  int voxel_chunkz = min_chunkz % num_chunks_wide_;
-  if (voxel_chunkx < 0) voxel_chunkx += num_chunks_wide_;
-  if (voxel_chunkz < 0) voxel_chunkz += num_chunks_wide_;
+  int min_chunkx = chunkx - REQ_BUFFER;
+  int min_chunkz = chunkz - REQ_BUFFER;
 
   // dimension of chunks to be overwritten.
   int numchunks = num_chunks_wide_  + 2 * (REQ_BUFFER - BUFFER);
 
-  populate_chunk_region(min_chunkx, min_chunkz, voxel_chunkx, voxel_chunkz,
-			numchunks, numchunks);
+  // TODO: Figure out why these need to be switched...
+  populate_chunk_region(min_chunkz, min_chunkx, numchunks, numchunks);
 
   // Pass everything into the shader.
   loc = glGetUniformLocation(prog_, "wsize");
@@ -222,7 +208,8 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   glUniform3f(loc, w_, h_, d_);
   
   loc = glGetUniformLocation(prog_, "voxeloffset");
-  glUniform3i(loc, voxelx, 0, voxelz);
+  glUniform3i(loc, (xpos % nx_t_ + nx_t_) % nx_t_, 0,
+	      (zpos % nz_t_ + nz_t_) % nz_t_);
   loc = glGetUniformLocation(prog_, "nvoxels");
   glUniform3i(loc, nx_, ny_, nz_);
   loc = glGetUniformLocation(prog_, "totalvoxels");
@@ -276,8 +263,7 @@ int VoxelShader::to_chunk_pos(int x, int z)
   return x * num_chunks_wide_ + z;
 }
 
-void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
-					int chunkz, int w, int h)
+void VoxelShader::populate_chunk_region(int xstart, int zstart, int w, int h)
 {
   // Check each chunk in the region requested.
   // Evict any mismatches.
@@ -288,17 +274,15 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
     for (int zoff = 0; zoff < h; zoff++) {
       int x = xstart + xoff;
       int z = zstart + zoff;
-      int cx = chunkx + xoff;
-      int cz = chunkz + zoff;
-      cx = (cx + num_chunks_wide_) % num_chunks_wide_;
-      cz = (cz + num_chunks_wide_) % num_chunks_wide_;
+      int cx = (x % num_chunks_wide_ + num_chunks_wide_) % num_chunks_wide_;
+      int cz = (z % num_chunks_wide_ + num_chunks_wide_) % num_chunks_wide_;
       int chunkpos = to_chunk_pos(cx, cz);
       chunk_id id(x, z);
 
       if (chunk_contents_[chunkpos] != id) {
 	if (chunk_contents_[chunkpos] != NULL_CHUNK)
 	  delete_vdata(chunk_contents_[chunkpos]);
-	populate_chunk(x, z, cx, cz);
+	populate_chunk(x, z);
 
 	int voxx = x * (int)(CHUNK_DIM * nx_);
 	int voxz = z * (int)(CHUNK_DIM * nz_);
@@ -309,10 +293,6 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
 	int boxd = CHUNK_DIM * nz_ + 2;
 	int boxx2 = (boxx + boxw) % nx_t_;
 	int boxz2 = (boxz + boxd) % nz_t_;
-
-	cout << "Updating dists in ["
-	     << boxx << "," << boxx2 << "] x ["
-	     << boxz << "," << boxz2 << "]." << endl;
 
 	int pos;
 	for (int y = 0; y < ny_t_; y++) {
@@ -340,7 +320,6 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
   }
 
   if (updates > 0) {
-    std::cout << "Recalculating distance field." << std::endl;
     solvedists();
     glBindTexture(GL_TEXTURE_3D, gl_voxel_tex_);
     glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, nx_t_, ny_t_, nz_t_, GL_RED_INTEGER,
@@ -350,9 +329,12 @@ void VoxelShader::populate_chunk_region(int xstart, int zstart, int chunkx,
   }
 }
 
-void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
+void VoxelShader::populate_chunk(int x, int z)
 {
-  chunk_id id(x, z);
+  chunk_id id(x,z);
+
+  int voxx = (x % num_chunks_wide_ + num_chunks_wide_) % num_chunks_wide_;
+  int voxz = (z % num_chunks_wide_ + num_chunks_wide_) % num_chunks_wide_;
   
   if (chunk_contents_[to_chunk_pos(voxx, voxz)] != NULL_CHUNK) {
     std::cerr << "Attempted to write to allocated chunk." << std::endl;
@@ -360,13 +342,14 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
   } else {
     chunk_contents_[to_chunk_pos(voxx, voxz)] = id;
   }
+
+  std::cout << "Mapping chunk at " << x << ", " << z << " to " << voxx << ", " << voxz << std::endl;
   
   x *= nx_ * CHUNK_DIM;
   z *= nz_ * CHUNK_DIM;
   voxx *= nx_ * CHUNK_DIM;
   voxz *= nz_ * CHUNK_DIM;
 
-  std::cout << "Mapping chunk at " << x << ", " << z << " to " << voxx << ", " << voxz << std::endl;
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, gl_vdata_);
 
   Voxel v;
@@ -378,7 +361,7 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
   int alloc_pos = -1;
   int cur_alloc = -1;
   for (int xpos = 0; xpos < CHUNK_DIM * nx_; xpos++) {
-    for (int ypos = 0; ypos < ny_; ypos++) {
+    for (int ypos = 0; ypos < ny_t_; ypos++) {
       for (int zpos = 0; zpos < CHUNK_DIM * nz_; zpos++) {
 	int pos = to_pos(glm::ivec3(xpos + voxx, ypos, zpos + voxz));
 	//dists_[pos] = 1000;
@@ -397,7 +380,6 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
 	  vd.lock = 0;
 	  if (alloc_left == 0) {
 	    if (cur_alloc != -1) {
-	      std::cout << "Writing " << alloc_pos - cur_alloc << " voxels." << std::endl;
 	      glBufferSubData(GL_SHADER_STORAGE_BUFFER,
 			      cur_alloc * sizeof(struct voxel_data),
 			      (alloc_pos - cur_alloc) * sizeof(struct voxel_data),
@@ -424,7 +406,6 @@ void VoxelShader::populate_chunk(int x, int z, int voxx, int voxz)
     }
   }
   if (cur_alloc != -1) {
-    std::cout << "Writing " << alloc_pos - cur_alloc << " voxels." << std::endl;
     glBufferSubData(GL_SHADER_STORAGE_BUFFER,
 		    cur_alloc * sizeof(struct voxel_data),
 		    (alloc_pos - cur_alloc) * sizeof(struct voxel_data),

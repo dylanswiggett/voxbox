@@ -76,6 +76,7 @@ int main(int argc, char** argv)
   d.addVoxels(new BoxVoxelData(vec3(9,6,9), vec3(3, 2, 3), Voxel(vec3(.3, .3, .3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(10,6,10), vec3(1, 3, 1), Voxel(vec3(.3, .3, .3), 0, 255)));
   d.addVoxels(new BoxVoxelData(vec3(-5,0,-5), vec3(30, 1, 30), Voxel(vec3(1,.6,.6), 0, 255)));
+  d.addVoxels(new BoxVoxelData(vec3(-15,0,-15), vec3(50, 1, 50), Voxel(vec3(.6,1,.6), 0, 255)));
 
   VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 60, 60, 60);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
@@ -86,7 +87,7 @@ int main(int argc, char** argv)
   float yoff = 0;//10000;
   float xsp = 0;
   float ysp = 0;
-  float speed = .3;
+  float speed = 1;
   bool update = true;
   // Main event/draw loop.
   while (running) {
@@ -116,6 +117,10 @@ int main(int argc, char** argv)
 
     xoff -= ysp - xsp;
     yoff -= ysp + xsp;
+    /*
+    xoff += xsp;
+    yoff -= ysp;
+    */
 
     // TODO: Run routine draw here.
     sf::Vector2u wsize = window.getSize();

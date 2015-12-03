@@ -49,13 +49,7 @@ int voxelAt(ivec3 pos, out int vloc) {
 
   pos += voxeloffset;
 
-  pos.x %= totalvoxels.x;
-  pos.z %= totalvoxels.z;
-  /*
-#include <time.h>  vec3 s = step(vec3(0,0,0), pos) - step(nvoxels, pos);
-  if (s.x * s.y * s.z == 0)
-    return -1;
-  */
+  pos = (pos % totalvoxels + totalvoxels) % totalvoxels;
 
   vloc = texelFetch(voxels, pos, 0).r;
   if (vloc > 0) {

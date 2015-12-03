@@ -1,5 +1,6 @@
 CXX = g++
-CFLAGS = -g -Wall -std=c++11 -rdynamic
+CFLAGS = -g -Wall -std=c++11 -rdynamic -O4
+# CFLAGS = -g -Wall -std=c++11 -rdynamic
 EXEC = main
 SOURCES = $(wildcard src/*.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
