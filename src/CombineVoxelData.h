@@ -13,7 +13,7 @@ using namespace std;
 class CombineVoxelData : public VoxelData {
  public:
   CombineVoxelData() { };
-  virtual bool voxelAt(vec3 position, Voxel* v) {
+  virtual bool voxelAt(ivec3 position, Voxel* v) {
     for (auto vox : voxels)
       if (vox->voxelAt(position, v))
 	return true;

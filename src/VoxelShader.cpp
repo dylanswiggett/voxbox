@@ -37,11 +37,9 @@ void check_GLerror()
 }
 
 VoxelShader::VoxelShader(VoxelData* data,
-			 float x, float y, float z,
-			 float w, float h, float d,
+			 int x, int y, int z,
 			 int nx, int ny, int nz) :
-  data_(data), x_(x), y_(y), z_(z),
-  w_(w), h_(h), d_(d), nx_(nx), ny_(ny), nz_(nz)
+  data_(data), x_(x), y_(y), z_(z), nx_(nx), ny_(ny), nz_(nz)
 {
   glEnable(GL_TEXTURE_3D);
   glEnable(GL_TEXTURE_2D);
@@ -205,7 +203,7 @@ void VoxelShader::draw(int w, int h, float xoff, float yoff, bool perform_update
   loc = glGetUniformLocation(prog_, "corner");
   glUniform3f(loc, x_, y_, z_);
   loc = glGetUniformLocation(prog_, "dim");
-  glUniform3f(loc, w_, h_, d_);
+  glUniform3f(loc, nx_, ny_, nz_);
   
   loc = glGetUniformLocation(prog_, "voxeloffset");
   glUniform3i(loc, (xpos % nx_t_ + nx_t_) % nx_t_, 0,
@@ -354,9 +352,6 @@ void VoxelShader::populate_chunk(int x, int z)
 
   Voxel v;
   voxel_data vd;
-  float xscale = w_ / nx_;
-  float yscale = h_ / ny_;
-  float zscale = d_ / nz_;
   int alloc_left = 0;
   int alloc_pos = -1;
   int cur_alloc = -1;
@@ -365,9 +360,9 @@ void VoxelShader::populate_chunk(int x, int z)
       for (int zpos = 0; zpos < CHUNK_DIM * nz_; zpos++) {
 	int pos = to_pos(glm::ivec3(xpos + voxx, ypos, zpos + voxz));
 	//dists_[pos] = 1000;
-	if (data_->voxelAt(vec3(xscale * (xpos + x),
-				yscale * (ypos + 0),
-				zscale * (zpos + z)), &v)) {
+	if (data_->voxelAt(ivec3((xpos + x),
+				 (ypos + 0),
+				 (zpos + z)), &v)) {
 	  vd.r = 255 * v.color.r;
 	  vd.g = 255 * v.color.g;
 	  vd.b = 255 * v.color.b;

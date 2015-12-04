@@ -40,6 +40,8 @@ void handler(int sig) {
 
 int main(int argc, char** argv)
 {
+  std::cout << "HERE?" << std::endl;
+  
   signal(SIGSEGV, handler);
   signal(SIGABRT, handler);
   
@@ -65,29 +67,29 @@ int main(int argc, char** argv)
 
   CombineVoxelData d;
 
-  d.addVoxels(new BoxVoxelData(vec3(6,0,6), vec3(9, 3, 9), Voxel(vec3(.6, .6, 1), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(4,0,4), vec3(13, 2, 13), Voxel(vec3(.6, .6, 1), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(9,3,9), vec3(3, 3, 3), Voxel(vec3(1, 1, 1), 100, 0)));
-  d.addVoxels(new BoxVoxelData(vec3(6,3,6), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
-  d.addVoxels(new BoxVoxelData(vec3(6,3,12), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
-  d.addVoxels(new BoxVoxelData(vec3(12,3,6), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
-  d.addVoxels(new BoxVoxelData(vec3(12,3,12), vec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
-  d.addVoxels(new BoxVoxelData(vec3(8,6,8), vec3(5, 1, 5), Voxel(vec3(.3, .3, .3), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(9,6,9), vec3(3, 2, 3), Voxel(vec3(.3, .3, .3), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(10,6,10), vec3(1, 3, 1), Voxel(vec3(.3, .3, .3), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(-5,0,-5), vec3(30, 1, 30), Voxel(vec3(1,.6,.6), 0, 255)));
-  d.addVoxels(new BoxVoxelData(vec3(-15,0,-15), vec3(80, 1, 50), Voxel(vec3(.6,1,.6), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(6,0,6), ivec3(9, 3, 9), Voxel(vec3(.6, .6, 1), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(4,0,4), ivec3(13, 2, 13), Voxel(vec3(.6, .6, 1), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(9,3,9), ivec3(3, 3, 3), Voxel(vec3(1, 1, 1), 100, 0)));
+  d.addVoxels(new BoxVoxelData(ivec3(6,3,6), ivec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(ivec3(6,3,12), ivec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(ivec3(12,3,6), ivec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(ivec3(12,3,12), ivec3(3, 3, 3), Voxel(vec3(.6, .6, .6), 0, 0)));
+  d.addVoxels(new BoxVoxelData(ivec3(8,6,8), ivec3(5, 1, 5), Voxel(vec3(.3, .3, .3), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(9,6,9), ivec3(3, 2, 3), Voxel(vec3(.3, .3, .3), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(10,6,10), ivec3(1, 3, 1), Voxel(vec3(.3, .3, .3), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(-5,0,-5), ivec3(30, 1, 30), Voxel(vec3(1,.6,.6), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(-15,0,-15), ivec3(80, 1, 50), Voxel(vec3(.6,1,.6), 0, 255)));
 
   for (int i = 0; i < 10; i++) {
-    d.addVoxels(new BoxVoxelData(vec3(30 + i * .5 , 1.5 * i + 1,i * .5),
-				 vec3(10 - i, 2, 10 - i),
+    d.addVoxels(new BoxVoxelData(ivec3(30 + i * .5 , 1.5 * i + 1,i * .5),
+				 ivec3(10 - i, 2, 10 - i),
 				 Voxel(vec3(.6,1.0 - .1 * i,.6), 0, 255)));
-    d.addVoxels(new BoxVoxelData(vec3(25 + i * .5 , i + 1,13 + i * .5),
-				 vec3(10 - i, 2, 10 - i),
+    d.addVoxels(new BoxVoxelData(ivec3(25 + i * .5 , i + 1,13 + i * .5),
+				 ivec3(10 - i, 2, 10 - i),
 				 Voxel(vec3(.6,1.0 - .1 * i,.6), 0, 255)));
   }
 
-  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 60, 60, 60);
+  VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 60, 60, 60);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 200, 200, 200);
   

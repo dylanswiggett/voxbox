@@ -58,8 +58,7 @@ class VoxelShader
 {
 private:
   VoxelData* data_;
-  float x_, y_, z_;
-  float w_, h_, d_;
+  int x_, y_, z_;
   int nx_, ny_, nz_;
   int nx_t_, ny_t_, nz_t_; // voxels + buffer
   GLuint prog_;
@@ -82,8 +81,7 @@ private:
   int t;
 public:
   VoxelShader(VoxelData* data,
-	      float x, float y, float z, // Corner of rendered region.
-	      float w, float h, float d, // Size of rendered region.
+	      int x, int y, int z, // Corner of rendered region.
 	      int nx, int ny, int nz); // Number of voxels in rendered region.
   virtual ~VoxelShader();
 

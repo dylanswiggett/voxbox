@@ -31,5 +31,5 @@ ostream &operator<<(ostream &os, Voxel const &vox)
 
 class VoxelData {
  public:
-  virtual bool voxelAt(vec3 position, Voxel *v) = 0;
+  virtual bool voxelAt(ivec3 position, Voxel *v) = 0;
 };
