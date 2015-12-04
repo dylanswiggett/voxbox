@@ -13,7 +13,7 @@
 // Parameters for dynamic chunk swapping.
 #define CHUNK_DIM .25 // Chunk width/height as a multiplier of height.
 #define VOXEL_ALLOC 1000 // Voxels allocated in groups of this size.
-#define MAX_FILL 1 // Maximum number of voxels as a multiplier of box size.
+#define MAX_FILL 3 // Maximum number of voxels as a multiplier of box size.
 #define BUFFER 4 // Number of chunks allocated on each side of the box.
 #define REQ_BUFFER 2 // Number of chunks required on each side of the box.
 #define MAX_CONCUR_BUFFER 2 // Number of chunks to transfer per frame.

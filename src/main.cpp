@@ -14,6 +14,7 @@
 #include "VoxelShader.hpp"
 #include "CombineVoxelData.h"
 #include "BoxVoxelData.h"
+#include "SinVoxelData.hpp"
 #include "VoxelData.h"
 
 #define DEFAULT_WIDTH 800
@@ -67,6 +68,7 @@ int main(int argc, char** argv)
 
   CombineVoxelData d;
 
+  /*
   d.addVoxels(new BoxVoxelData(ivec3(6,0,6), ivec3(9, 3, 9), Voxel(vec3(.6, .6, 1), 0, 255)));
   d.addVoxels(new BoxVoxelData(ivec3(4,0,4), ivec3(13, 2, 13), Voxel(vec3(.6, .6, 1), 0, 255)));
   d.addVoxels(new BoxVoxelData(ivec3(9,3,9), ivec3(3, 3, 3), Voxel(vec3(1, 1, 1), 100, 0)));
@@ -88,6 +90,11 @@ int main(int argc, char** argv)
 				 ivec3(10 - i, 2, 10 - i),
 				 Voxel(vec3(.6,1.0 - .1 * i,.6), 0, 255)));
   }
+  */
+
+  d.addVoxels(new SinVoxelData(10, 10, 5, Voxel(vec3(.6,.6,.6), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(0,0,0), ivec3(10,50,10), Voxel(vec3(1,.6,.6), 100, 0)));
+  d.addVoxels(new BoxVoxelData(ivec3(0,0,40), ivec3(10,50,10), Voxel(vec3(.6,.6,1), 100, 0)));
 
   VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 60, 60, 60);
   //VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 20, 20, 20, 100, 100, 100);
