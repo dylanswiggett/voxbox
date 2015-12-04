@@ -122,12 +122,12 @@ VoxelShader::VoxelShader(VoxelData* data,
   double dphi = a/dtheta;
   for (int m = 0; m < mtheta; m++) {
     double theta = PI*(.5+m)/mtheta;
-    double mphi = round(2*PI*sin(theta)/dphi);
+    double mphi = round(2.0*PI*sin(theta)/dphi);
     for (int n = 0; n < mphi; n++) {
-      double phi = 2 * PI * n / mphi;
-      raydirs.push_back(glm::vec3(sin(theta)*cos(phi),
-				  sin(theta)*sin(phi),
-				  cos(theta)));
+      double phi = 2.0 * PI * n / mphi;
+      raydirs.push_back(glm::vec3(sin(theta)*sin(phi),
+				  cos(theta),
+				  sin(theta)*cos(phi)));
     }
   }
   std::random_shuffle(raydirs.begin(), raydirs.end());
@@ -370,7 +370,8 @@ void VoxelShader::populate_chunk(int x, int z)
 	  vd.diffuse = v.diffuse;
 
 	  vd.illum_r = vd.illum_g = vd.illum_b = 0;
-	  vd.numrays = vd.neighbors = 0;
+	  vd.numrays = 10;
+	  vd.neighbors = 0;
 	  vd.flags = 0;
 	  vd.lock = 0;
 	  if (alloc_left == 0) {

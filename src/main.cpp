@@ -92,8 +92,9 @@ int main(int argc, char** argv)
   }
   */
 
-  d.addVoxels(new SinVoxelData(10, 10, 5, Voxel(vec3(.6,.6,.6), 0, 255)));
-  d.addVoxels(new BoxVoxelData(ivec3(0,0,0), ivec3(10,50,10), Voxel(vec3(1,.6,.6), 100, 0)));
+  d.addVoxels(new SinVoxelData(10, 5, 10, Voxel(vec3(.6,1,.6), 0, 100)));
+  d.addVoxels(new BoxVoxelData(ivec3(-10000,0,-10000), ivec3(20000,1,20000), Voxel(vec3(.3,.3,.7), 0, 255)));
+  d.addVoxels(new BoxVoxelData(ivec3(10,0,10), ivec3(10,50,10), Voxel(vec3(1,.6,.6), 100, 0)));
   d.addVoxels(new BoxVoxelData(ivec3(0,0,40), ivec3(10,50,10), Voxel(vec3(.6,.6,1), 100, 0)));
 
   VoxelShader *vs = new VoxelShader(&d, 0, 0, 0, 60, 60, 60);
